@@ -1,0 +1,7 @@
+{
+  "name": "Elsa Laundry Services",
+  "description": "On-demand laundry pickup and delivery app for Elsa Laundry Services in Kenya, featuring local KES pricing, M-Pesa payments, driver route navigation, and real-time order tracking.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
