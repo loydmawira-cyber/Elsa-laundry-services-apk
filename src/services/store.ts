@@ -111,6 +111,7 @@ class StoreService {
   private notifications: AppNotification[] = [];
   private userLocation: UserLocation = DEFAULT_USER_LOCATION;
   private addressUnsubscribe: Unsubscribe | null = null;
+  private dataUnsubscribes: Unsubscribe[] = [];
 
   constructor() {
     this.initFirebaseListeners();
@@ -179,11 +180,20 @@ class StoreService {
 
           // Attach address subcollection listener
           this.listenToUserAddresses(fbUser.uid);
+
+          // Firestore rules require an authenticated user. These listeners
+          // must be attached after auth has been restored, not at startup.
+          this.startDataListeners();
         } catch (err) {
           console.error('Error loading user document from Firestore:', err);
         }
       } else {
         this.currentUser = null;
+        this.stopDataListeners();
+        this.users = [];
+        this.orders = [];
+        this.inventory = [];
+        this.notifications = [];
         if (this.addressUnsubscribe) {
           this.addressUnsubscribe();
           this.addressUnsubscribe = null;
@@ -191,91 +201,65 @@ class StoreService {
       }
       this.notify();
     });
+  }
 
-    // 2. Real-time Orders Listener
-    try {
-      const ordersCol = collection(db, 'orders');
-      onSnapshot(
-        ordersCol,
-        (snapshot) => {
-          const list: Order[] = snapshot.docs.map((docSnap) => {
-            const data = docSnap.data();
-            return {
-              ...data,
-              id: docSnap.id,
-            } as Order;
-          });
-          list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          this.orders = list;
-          this.notify();
-        },
-        (error) => {
-          console.warn('Orders snapshot notice:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Orders listener setup error:', err);
-    }
+  /** Attach Firestore listeners only while Firebase Auth is signed in. */
+  private startDataListeners() {
+    if (!auth.currentUser || this.dataUnsubscribes.length > 0) return;
 
-    // 3. Real-time Inventory Listener
-    try {
-      const inventoryCol = collection(db, 'inventory');
-      onSnapshot(
-        inventoryCol,
-        (snapshot) => {
-          this.inventory = snapshot.docs.map((docSnap) => ({
-            ...docSnap.data(),
-            id: docSnap.id,
-          })) as InventoryItem[];
-          this.notify();
-        },
-        (error) => {
-          console.warn('Inventory snapshot notice:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Inventory listener setup error:', err);
-    }
+    const attach = (label: string, subscribe: (onNext: (snapshot: any) => void, onError: (error: Error) => void) => Unsubscribe) => {
+      try {
+        const unsubscribe = subscribe(
+          (snapshot) => snapshot,
+          (error) => console.warn(`${label} snapshot notice:`, error.message)
+        );
+        this.dataUnsubscribes.push(unsubscribe);
+        return unsubscribe;
+      } catch (err) {
+        console.warn(`${label} listener setup error:`, err);
+        return null;
+      }
+    };
 
-    // 4. Real-time Users Directory Listener (Admin & Staff management)
-    try {
-      const usersCol = collection(db, 'users');
-      onSnapshot(
-        usersCol,
-        (snapshot) => {
-          this.users = snapshot.docs.map((docSnap) => ({
-            ...docSnap.data(),
-            id: docSnap.id,
-          })) as User[];
-          this.notify();
-        },
-        (error) => {
-          console.warn('Users snapshot notice:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Users listener setup error:', err);
-    }
+    attach('Orders', (onNext, onError) => onSnapshot(collection(db, 'orders'), (snapshot) => {
+      const list: Order[] = snapshot.docs.map((docSnap: any) => ({
+        ...docSnap.data(),
+        id: docSnap.id,
+      })) as Order[];
+      list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      this.orders = list;
+      this.notify();
+    }, onError));
 
-    // 5. Real-time Notifications Listener
-    try {
-      const notifsCol = collection(db, 'notifications');
-      onSnapshot(
-        notifsCol,
-        (snapshot) => {
-          this.notifications = snapshot.docs.map((docSnap) => ({
-            ...docSnap.data(),
-            id: docSnap.id,
-          })) as AppNotification[];
-          this.notify();
-        },
-        (error) => {
-          console.warn('Notifications snapshot notice:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Notifications listener setup error:', err);
-    }
+    attach('Inventory', (onNext, onError) => onSnapshot(collection(db, 'inventory'), (snapshot) => {
+      this.inventory = snapshot.docs.map((docSnap: any) => ({
+        ...docSnap.data(),
+        id: docSnap.id,
+      })) as InventoryItem[];
+      this.notify();
+    }, onError));
+
+    attach('Users', (onNext, onError) => onSnapshot(collection(db, 'users'), (snapshot) => {
+      this.users = snapshot.docs.map((docSnap: any) => ({
+        ...docSnap.data(),
+        id: docSnap.id,
+      })) as User[];
+      this.notify();
+    }, onError));
+
+    attach('Notifications', (onNext, onError) => onSnapshot(collection(db, 'notifications'), (snapshot) => {
+      this.notifications = snapshot.docs.map((docSnap: any) => ({
+        ...docSnap.data(),
+        id: docSnap.id,
+      })) as AppNotification[];
+      this.notify();
+    }, onError));
+  }
+
+  /** Stop listeners before auth is cleared so unauthenticated reads are not retried. */
+  private stopDataListeners() {
+    this.dataUnsubscribes.forEach((unsubscribe) => unsubscribe());
+    this.dataUnsubscribes = [];
   }
 
   private listenToUserAddresses(userId: string) {
