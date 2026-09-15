@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["customer", "driver", "admin"] },
+        "created_at": { "type": "string" },
+        "default_detergent": { "type": "string" },
+        "avatar": { "type": "string" }
+      },
+      "required": ["name", "email", "role", "created_at"]
+    },
+    "Address": {
+      "title": "Address",
+      "description": "Customer delivery or pickup address",
+      "type": "object",
+      "properties": {
+        "customer_id": { "type": "string" },
+        "label": { "type": "string" },
+        "street": { "type": "string" },
+        "city": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "is_default": { "type": "boolean" }
+      },
+      "required": ["street", "city", "customer_id"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Laundry service order lifecycle",
+      "type": "object",
+      "properties": {
+        "customer_id": { "type": "string" },
+        "customer_name": { "type": "string" },
+        "customer_phone": { "type": "string" },
+        "driver_id": { "type": "string" },
+        "driver_name": { "type": "string" },
+        "pickup_address": { "type": "string" },
+        "dropoff_address": { "type": "string" },
+        "pickup_window": { "type": "string" },
+        "dropoff_window": { "type": "string" },
+        "status": { "type": "string" },
+        "payment_status": { "type": "string" },
+        "payment_method": { "type": "string" },
+        "detergent_choice": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "delivery_fee": { "type": "number" },
+        "total_amount": { "type": "number" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" },
+        "proof_photo": { "type": "string" },
+        "driver_notes": { "type": "string" },
+        "status_history": { "type": "array" }
+      },
+      "required": ["customer_id", "status", "items", "total_amount", "created_at"]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "Laundry detergent and packaging inventory item",
+      "type": "object",
+      "properties": {
+        "item_name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "low_stock_threshold": { "type": "number" },
+        "category": { "type": "string" }
+      },
+      "required": ["item_name", "quantity", "unit", "low_stock_threshold"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "In-app push notifications for status updates",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "read": { "type": "boolean" },
+        "order_id": { "type": "string" },
+        "target_role": { "type": "string" },
+        "user_id": { "type": "string" }
+      },
+      "required": ["title", "body", "target_role", "read"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile information"
+    },
+    "/users/{userId}/addresses/{addressId}": {
+      "schema": { "$ref": "#/entities/Address" },
+      "description": "Saved customer pickup/delivery addresses"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer laundry bookings and status history"
+    },
+    "/inventory/{itemId}": {
+      "schema": { "$ref": "#/entities/InventoryItem" },
+      "description": "Facility supply levels and stock thresholds"
+    },
+    "/notifications/{notifId}": {
+      "schema": { "$ref": "#/entities/AppNotification" },
+      "description": "System alerts and order updates"
+    }
+  }
+}

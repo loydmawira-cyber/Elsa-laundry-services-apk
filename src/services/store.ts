@@ -1,4 +1,25 @@
 import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  Unsubscribe,
+} from 'firebase/firestore';
+import { auth, db } from './firebase';
+import {
   User,
   UserRole,
   Address,
@@ -11,14 +32,6 @@ import {
   OrderItem,
   UserLocation,
 } from '../types';
-
-const USERS_STORAGE_KEY = 'elsa_laundry_users_v2';
-const CURRENT_USER_KEY = 'elsa_laundry_current_user_v2';
-const ORDERS_STORAGE_KEY = 'elsa_laundry_orders_v2';
-const ADDRESSES_STORAGE_KEY = 'elsa_laundry_addresses_v2';
-const INVENTORY_STORAGE_KEY = 'elsa_laundry_inventory_v2';
-const NOTIFICATIONS_STORAGE_KEY = 'elsa_laundry_notifications_v2';
-const LOCATION_STORAGE_KEY = 'elsa_laundry_user_location_v2';
 
 export const DEFAULT_USER_LOCATION: UserLocation = {
   area: 'Kilimani',
@@ -291,7 +304,6 @@ const INITIAL_INVENTORY: InventoryItem[] = [
 ];
 
 const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  // Customer notifications
   {
     id: 'notif-cust-1',
     title: 'Order Status Update',
@@ -322,7 +334,6 @@ const INITIAL_NOTIFICATIONS: AppNotification[] = [
     target_role: 'customer',
     user_id: 'cust-1',
   },
-  // Driver notifications
   {
     id: 'notif-drv-1',
     title: 'New Route Assigned',
@@ -352,7 +363,6 @@ const INITIAL_NOTIFICATIONS: AppNotification[] = [
     target_role: 'driver',
     user_id: 'driver-1',
   },
-  // Admin notifications
   {
     id: 'notif-adm-1',
     title: 'New Order Received',
@@ -382,29 +392,239 @@ const INITIAL_NOTIFICATIONS: AppNotification[] = [
 
 class StoreService {
   private listeners: Set<() => void> = new Set();
+  private currentUser: User | null = null;
+  private users: User[] = [...INITIAL_USERS];
+  private orders: Order[] = [...INITIAL_ORDERS];
+  private inventory: InventoryItem[] = [...INITIAL_INVENTORY];
+  private addresses: Map<string, Address[]> = new Map();
+  private notifications: AppNotification[] = [...INITIAL_NOTIFICATIONS];
+  private userLocation: UserLocation = DEFAULT_USER_LOCATION;
+  private addressUnsubscribe: Unsubscribe | null = null;
+  private isInitialized = false;
 
   constructor() {
-    this.init();
+    this.initFirebaseListeners();
   }
 
-  private init() {
-    if (!localStorage.getItem(USERS_STORAGE_KEY)) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
+  private async initFirebaseListeners() {
+    // 1. Listen for Auth State Changes
+    onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
+      if (fbUser) {
+        try {
+          const userDocRef = doc(db, 'users', fbUser.uid);
+          const userSnap = await getDoc(userDocRef);
+          if (userSnap.exists()) {
+            const data = userSnap.data();
+            this.currentUser = {
+              id: fbUser.uid,
+              name: data.name || fbUser.displayName || 'Valued User',
+              email: data.email || fbUser.email || '',
+              phone: data.phone || '+254 700 000 000',
+              role: (data.role as UserRole) || 'customer',
+              created_at: data.created_at || new Date().toISOString(),
+              default_detergent: data.default_detergent || 'Hypoallergenic Gentle Wash (Fragrance Free)',
+              avatar: data.avatar,
+            };
+          } else {
+            // Create user document if missing
+            const role: UserRole = (fbUser.email?.toLowerCase().includes('admin') || fbUser.email?.toLowerCase().includes('elsie'))
+              ? 'admin'
+              : (fbUser.email?.toLowerCase().includes('driver') || fbUser.email?.toLowerCase().includes('mwangi'))
+              ? 'driver'
+              : 'customer';
+
+            const newUserDoc: User = {
+              id: fbUser.uid,
+              name: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Valued User'),
+              email: fbUser.email || '',
+              phone: '+254 700 000 000',
+              role,
+              created_at: new Date().toISOString(),
+              default_detergent: 'Hypoallergenic Gentle Wash (Fragrance Free)',
+            };
+            await setDoc(userDocRef, newUserDoc);
+            this.currentUser = newUserDoc;
+          }
+
+          // Attach subcollection listener for addresses
+          this.listenToUserAddresses(fbUser.uid);
+        } catch (err) {
+          console.warn('Could not fetch user document from Firestore:', err);
+        }
+      } else {
+        this.currentUser = null;
+        if (this.addressUnsubscribe) {
+          this.addressUnsubscribe();
+          this.addressUnsubscribe = null;
+        }
+      }
+      this.notify();
+    });
+
+    // 2. Real-time Orders Listener
+    try {
+      const ordersCol = collection(db, 'orders');
+      onSnapshot(
+        ordersCol,
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const list: Order[] = snapshot.docs.map((docSnap) => {
+              const data = docSnap.data();
+              return {
+                ...data,
+                id: docSnap.id,
+              } as Order;
+            });
+            // Sort newest first
+            list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            this.orders = list;
+          } else {
+            // Seed initial orders into Firestore on first run
+            this.seedInitialOrders();
+          }
+          this.notify();
+        },
+        (error) => {
+          console.warn('Orders onSnapshot notice:', error.message);
+        }
+      );
+    } catch (err) {
+      console.warn('Orders listener init error:', err);
     }
-    if (!localStorage.getItem(CURRENT_USER_KEY)) {
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(INITIAL_USERS[0])); // Sarah Wanjiku by default
+
+    // 3. Real-time Inventory Listener
+    try {
+      const inventoryCol = collection(db, 'inventory');
+      onSnapshot(
+        inventoryCol,
+        (snapshot) => {
+          if (!snapshot.empty) {
+            this.inventory = snapshot.docs.map((docSnap) => ({
+              ...docSnap.data(),
+              id: docSnap.id,
+            })) as InventoryItem[];
+          } else {
+            this.seedInitialInventory();
+          }
+          this.notify();
+        },
+        (error) => {
+          console.warn('Inventory onSnapshot notice:', error.message);
+        }
+      );
+    } catch (err) {
+      console.warn('Inventory listener init error:', err);
     }
-    if (!localStorage.getItem(ADDRESSES_STORAGE_KEY)) {
-      localStorage.setItem(ADDRESSES_STORAGE_KEY, JSON.stringify(INITIAL_ADDRESSES));
+
+    // 4. Real-time Users Listener (for admin/staff/customer directory)
+    try {
+      const usersCol = collection(db, 'users');
+      onSnapshot(
+        usersCol,
+        (snapshot) => {
+          if (!snapshot.empty) {
+            this.users = snapshot.docs.map((docSnap) => ({
+              ...docSnap.data(),
+              id: docSnap.id,
+            })) as User[];
+          } else {
+            this.seedInitialUsers();
+          }
+          this.notify();
+        },
+        (error) => {
+          console.warn('Users onSnapshot notice:', error.message);
+        }
+      );
+    } catch (err) {
+      console.warn('Users listener init error:', err);
     }
-    if (!localStorage.getItem(ORDERS_STORAGE_KEY)) {
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(INITIAL_ORDERS));
+
+    // 5. Real-time Notifications Listener
+    try {
+      const notifsCol = collection(db, 'notifications');
+      onSnapshot(
+        notifsCol,
+        (snapshot) => {
+          if (!snapshot.empty) {
+            this.notifications = snapshot.docs.map((docSnap) => ({
+              ...docSnap.data(),
+              id: docSnap.id,
+            })) as AppNotification[];
+          }
+          this.notify();
+        },
+        (error) => {
+          console.warn('Notifications onSnapshot notice:', error.message);
+        }
+      );
+    } catch (err) {
+      console.warn('Notifications listener init error:', err);
     }
-    if (!localStorage.getItem(INVENTORY_STORAGE_KEY)) {
-      localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(INITIAL_INVENTORY));
+
+    this.isInitialized = true;
+  }
+
+  private listenToUserAddresses(userId: string) {
+    if (this.addressUnsubscribe) {
+      this.addressUnsubscribe();
     }
-    if (!localStorage.getItem(NOTIFICATIONS_STORAGE_KEY)) {
-      localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(INITIAL_NOTIFICATIONS));
+    try {
+      const addrCol = collection(db, 'users', userId, 'addresses');
+      this.addressUnsubscribe = onSnapshot(
+        addrCol,
+        (snapshot) => {
+          const list: Address[] = snapshot.docs.map((d) => ({
+            ...d.data(),
+            id: d.id,
+          })) as Address[];
+
+          if (list.length === 0 && userId === 'cust-1') {
+            // Seed initial sample addresses for demo
+            INITIAL_ADDRESSES.forEach((addr) => {
+              setDoc(doc(db, 'users', userId, 'addresses', addr.id), addr);
+            });
+          } else {
+            this.addresses.set(userId, list);
+          }
+          this.notify();
+        },
+        (err) => {
+          console.warn('Addresses onSnapshot notice:', err.message);
+        }
+      );
+    } catch (err) {
+      console.warn('listenToUserAddresses error:', err);
+    }
+  }
+
+  private async seedInitialOrders() {
+    try {
+      for (const ord of INITIAL_ORDERS) {
+        await setDoc(doc(db, 'orders', ord.id), ord);
+      }
+    } catch (e) {
+      console.warn('Seed initial orders error:', e);
+    }
+  }
+
+  private async seedInitialInventory() {
+    try {
+      for (const item of INITIAL_INVENTORY) {
+        await setDoc(doc(db, 'inventory', item.id), item);
+      }
+    } catch (e) {
+      console.warn('Seed initial inventory error:', e);
+    }
+  }
+
+  private async seedInitialUsers() {
+    try {
+      for (const u of INITIAL_USERS) {
+        await setDoc(doc(db, 'users', u.id), u);
+      }
+    } catch (e) {
+      console.warn('Seed initial users error:', e);
     }
   }
 
@@ -419,159 +639,242 @@ class StoreService {
     this.listeners.forEach((cb) => cb());
   }
 
-  // Users & Auth
-  public getUsers(): User[] {
-    try {
-      const data = localStorage.getItem(USERS_STORAGE_KEY);
-      return data ? JSON.parse(data) : INITIAL_USERS;
-    } catch {
-      return INITIAL_USERS;
+  // Helper to format identifiers into valid Firebase email format
+  private resolveAuthEmail(identifier: string): string {
+    const cleanId = identifier.trim().toLowerCase();
+    if (cleanId.includes('@')) {
+      return cleanId;
     }
+    const cleanDigits = identifier.replace(/[^0-9]/g, '');
+    return `${cleanDigits || 'user'}@elsalaundry.app`;
   }
 
-  public getCurrentUser(): User | null {
-    try {
-      const data = localStorage.getItem(CURRENT_USER_KEY);
-      if (!data || data === 'null' || data === 'undefined') return null;
-      return JSON.parse(data);
-    } catch {
-      return null;
-    }
-  }
-
-  public setCurrentUser(user: User | null) {
-    if (!user) {
-      localStorage.removeItem(CURRENT_USER_KEY);
-    } else {
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-    }
-    this.notify();
-  }
-
-  public logout() {
-    localStorage.removeItem(CURRENT_USER_KEY);
-    this.notify();
-  }
-
-  public registerUser(params: {
+  // Authentication Methods (Firebase Auth + Firestore)
+  public async registerUser(params: {
     name: string;
     phone: string;
     email: string;
+    password?: string;
     role: UserRole;
     default_detergent?: string;
-  }): User {
-    const users = this.getUsers();
+  }): Promise<User> {
+    const email = params.email.trim() || this.resolveAuthEmail(params.phone);
+    const password = params.password || 'password123';
+
+    let fbUserUid = `user-${Date.now()}`;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      fbUserUid = userCredential.user.uid;
+    } catch (err: any) {
+      // If user already exists in Auth, try sign in with same password
+      if (err?.code === 'auth/email-already-in-use') {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        fbUserUid = cred.user.uid;
+      } else {
+        console.warn('Firebase createUser notice:', err?.message);
+      }
+    }
+
     const newUser: User = {
-      id: `user-${Date.now()}`,
+      id: fbUserUid,
       name: params.name,
       phone: params.phone,
-      email: params.email,
+      email: email,
       role: params.role,
       created_at: new Date().toISOString(),
       default_detergent: params.default_detergent || 'Hypoallergenic Gentle Wash (Fragrance Free)',
     };
-    users.push(newUser);
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    this.setCurrentUser(newUser);
+
+    try {
+      await setDoc(doc(db, 'users', fbUserUid), newUser);
+    } catch (err) {
+      console.warn('Could not write user to Firestore:', err);
+    }
+
+    this.currentUser = newUser;
+    this.listenToUserAddresses(fbUserUid);
+    this.notify();
     return newUser;
   }
 
-  public loginAs(role: 'customer' | 'driver' | 'admin'): User {
-    const users = this.getUsers();
-    const user = users.find((u) => u.role === role) || users[0];
-    this.setCurrentUser(user);
-    return user;
-  }
-
-  public loginWithCredentials(identifier: string): User {
-    const users = this.getUsers();
+  public async loginWithCredentials(identifier: string, password = 'password123'): Promise<User> {
     const cleanId = identifier.trim().toLowerCase();
+    const email = this.resolveAuthEmail(identifier);
+
+    let fbUid = '';
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      fbUid = cred.user.uid;
+    } catch (authErr: any) {
+      // If account doesn't exist yet, auto-provision in Firebase Auth
+      if (authErr?.code === 'auth/user-not-found' || authErr?.code === 'auth/invalid-credential') {
+        try {
+          const newCred = await createUserWithEmailAndPassword(auth, email, password);
+          fbUid = newCred.user.uid;
+        } catch {
+          // fallback
+          fbUid = `user-${Date.now()}`;
+        }
+      } else {
+        fbUid = `user-${Date.now()}`;
+      }
+    }
+
+    // Determine role & metadata
+    const role: UserRole =
+      cleanId.includes('admin') || cleanId.includes('elsie')
+        ? 'admin'
+        : cleanId.includes('driver') || cleanId.includes('mwangi') || cleanId.includes('otieno')
+        ? 'driver'
+        : 'customer';
+
     const cleanDigits = identifier.replace(/[^0-9]/g, '');
+    const isKenyanPhone = /^(?:\+254|0)?7\d{8}$/.test(cleanDigits);
+    const formattedPhone = isKenyanPhone ? `+254 ${cleanDigits.slice(-9)}` : identifier;
 
-    let found = users.find(
-      (u) =>
-        u.email.toLowerCase() === cleanId ||
-        (cleanDigits.length >= 8 && u.phone.replace(/[^0-9]/g, '').endsWith(cleanDigits.slice(-8)))
-    );
-    if (!found) {
-      // Create account if logging in with new phone/email
-      const isKenyanPhone = /^(?:\+254|0)?7\d{8}$/.test(cleanDigits);
-      const formattedPhone = isKenyanPhone
-        ? `+254 ${cleanDigits.slice(-9)}`
-        : identifier.includes('@')
-        ? '+254 700 000 111'
-        : identifier;
+    // Check if doc exists in Firestore
+    let resolvedUser: User | null = null;
+    if (fbUid) {
+      try {
+        const userDocRef = doc(db, 'users', fbUid);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          resolvedUser = { ...(userSnap.data() as User), id: fbUid };
+        } else {
+          // Check matching initial demo users
+          const initialMatch = INITIAL_USERS.find(
+            (u) =>
+              u.email.toLowerCase() === email.toLowerCase() ||
+              (cleanDigits.length >= 8 && u.phone.replace(/[^0-9]/g, '').endsWith(cleanDigits.slice(-8)))
+          );
 
-      const newUser: User = {
-        id: `user-${Date.now()}`,
+          resolvedUser = {
+            id: fbUid,
+            name: initialMatch?.name || (identifier.includes('@') ? identifier.split('@')[0] : 'Valued Customer'),
+            phone: initialMatch?.phone || formattedPhone,
+            email: email,
+            role: initialMatch?.role || role,
+            created_at: new Date().toISOString(),
+            default_detergent: initialMatch?.default_detergent || 'Hypoallergenic Gentle Wash (Fragrance Free)',
+          };
+          await setDoc(userDocRef, resolvedUser);
+        }
+      } catch (e) {
+        console.warn('Firestore fetch user error:', e);
+      }
+    }
+
+    if (!resolvedUser) {
+      resolvedUser = {
+        id: fbUid || `user-${Date.now()}`,
         name: identifier.includes('@') ? identifier.split('@')[0] : 'Valued Customer',
         phone: formattedPhone,
-        email: identifier.includes('@') ? identifier : `${cleanDigits}@gmail.com`,
-        role: cleanId.includes('admin') ? 'admin' : cleanId.includes('driver') ? 'driver' : 'customer',
+        email: email,
+        role: role,
         created_at: new Date().toISOString(),
         default_detergent: 'Hypoallergenic Gentle Wash (Fragrance Free)',
       };
-      users.push(newUser);
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-      found = newUser;
     }
-    this.setCurrentUser(found);
-    return found;
+
+    this.currentUser = resolvedUser;
+    this.listenToUserAddresses(resolvedUser.id);
+    this.notify();
+    return resolvedUser;
   }
 
-  public updateProfile(userId: string, updates: Partial<User>) {
-    const users = this.getUsers().map((u) => (u.id === userId ? { ...u, ...updates } : u));
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    const current = this.getCurrentUser();
-    if (current && current.id === userId) {
-      this.setCurrentUser({ ...current, ...updates });
-    } else {
-      this.notify();
+  public async logout(): Promise<void> {
+    try {
+      await firebaseSignOut(auth);
+    } catch (err) {
+      console.warn('Firebase signOut notice:', err);
     }
+    this.currentUser = null;
+    if (this.addressUnsubscribe) {
+      this.addressUnsubscribe();
+      this.addressUnsubscribe = null;
+    }
+    this.notify();
+  }
+
+  public getCurrentUser(): User | null {
+    return this.currentUser;
+  }
+
+  public setCurrentUser(user: User | null) {
+    this.currentUser = user;
+    if (user) {
+      this.listenToUserAddresses(user.id);
+    }
+    this.notify();
+  }
+
+  public getUsers(): User[] {
+    return this.users.length > 0 ? this.users : INITIAL_USERS;
+  }
+
+  public async updateProfile(userId: string, updates: Partial<User>) {
+    try {
+      await updateDoc(doc(db, 'users', userId), updates);
+    } catch (e) {
+      console.warn('Update user profile error:', e);
+    }
+    if (this.currentUser && this.currentUser.id === userId) {
+      this.currentUser = { ...this.currentUser, ...updates };
+    }
+    this.notify();
   }
 
   // Addresses
   public getAddresses(customerId?: string): Address[] {
-    try {
-      const data = localStorage.getItem(ADDRESSES_STORAGE_KEY);
-      const list: Address[] = data ? JSON.parse(data) : INITIAL_ADDRESSES;
-      return customerId ? list.filter((a) => a.customer_id === customerId) : list;
-    } catch {
-      return INITIAL_ADDRESSES;
+    const targetId = customerId || this.currentUser?.id;
+    if (targetId && this.addresses.has(targetId)) {
+      const list = this.addresses.get(targetId) || [];
+      if (list.length > 0) return list;
     }
+    return INITIAL_ADDRESSES.filter((a) => !targetId || a.customer_id === targetId);
   }
 
-  public addAddress(address: Omit<Address, 'id'>): Address {
-    const addresses = this.getAddresses();
+  public async addAddress(address: Omit<Address, 'id'>): Promise<Address> {
+    const addrId = `addr-${Date.now()}`;
     const newAddr: Address = {
       ...address,
-      id: `addr-${Date.now()}`,
+      id: addrId,
     };
-    if (newAddr.is_default) {
-      addresses.forEach((a) => {
-        if (a.customer_id === address.customer_id) a.is_default = false;
-      });
+
+    const customerId = address.customer_id || this.currentUser?.id || 'cust-1';
+    try {
+      await setDoc(doc(db, 'users', customerId, 'addresses', addrId), newAddr);
+    } catch (err) {
+      console.warn('addAddress Firestore error:', err);
     }
-    addresses.unshift(newAddr);
-    localStorage.setItem(ADDRESSES_STORAGE_KEY, JSON.stringify(addresses));
+
+    const currentList = this.addresses.get(customerId) || [];
+    if (newAddr.is_default) {
+      currentList.forEach((a) => (a.is_default = false));
+    }
+    this.addresses.set(customerId, [newAddr, ...currentList]);
     this.notify();
     return newAddr;
   }
 
-  public deleteAddress(id: string) {
-    const filtered = this.getAddresses().filter((a) => a.id !== id);
-    localStorage.setItem(ADDRESSES_STORAGE_KEY, JSON.stringify(filtered));
+  public async deleteAddress(id: string, customerId?: string) {
+    const targetId = customerId || this.currentUser?.id || 'cust-1';
+    try {
+      await deleteDoc(doc(db, 'users', targetId, 'addresses', id));
+    } catch (err) {
+      console.warn('deleteAddress Firestore error:', err);
+    }
+    const currentList = this.addresses.get(targetId) || [];
+    this.addresses.set(
+      targetId,
+      currentList.filter((a) => a.id !== id)
+    );
     this.notify();
   }
 
   // Orders
   public getOrders(): Order[] {
-    try {
-      const data = localStorage.getItem(ORDERS_STORAGE_KEY);
-      return data ? JSON.parse(data) : INITIAL_ORDERS;
-    } catch {
-      return INITIAL_ORDERS;
-    }
+    return this.orders.length > 0 ? this.orders : INITIAL_ORDERS;
   }
 
   public getOrderById(id: string): Order | undefined {
@@ -586,7 +889,7 @@ class StoreService {
     return this.getOrders().filter((o) => o.driver_id === driverId);
   }
 
-  public createOrder(params: {
+  public async createOrder(params: {
     customer: User;
     pickup_address: string;
     dropoff_address: string;
@@ -595,14 +898,12 @@ class StoreService {
     items: OrderItem[];
     detergent_choice: string;
     payment_method: PaymentMethod;
-  }): Order {
-    const orders = this.getOrders();
+  }): Promise<Order> {
     const subtotal = params.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const delivery_fee = 250;
     const total_amount = Math.round(subtotal + delivery_fee);
     const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Auto assign driver Brian Mwangi if available
     const drivers = this.getUsers().filter((u) => u.role === 'driver');
     const assignedDriver = drivers[0];
 
@@ -635,11 +936,16 @@ class StoreService {
       ],
     };
 
-    orders.unshift(newOrder);
-    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    // Optimistic local update
+    this.orders = [newOrder, ...this.orders];
 
-    // Create targeted notifications:
-    // 1. Customer notification
+    try {
+      await setDoc(doc(db, 'orders', orderId), newOrder);
+    } catch (err) {
+      console.warn('createOrder Firestore error:', err);
+    }
+
+    // Customer Notification
     this.addNotification({
       title: 'Pickup Scheduled!',
       body: `Your order #${orderId} is confirmed. Driver scheduled for ${params.pickup_window}.`,
@@ -648,7 +954,7 @@ class StoreService {
       user_id: params.customer.id,
     });
 
-    // 2. Admin notification
+    // Admin Notification
     this.addNotification({
       title: 'New Order Received',
       body: `Order #${orderId} placed by ${params.customer.name} (${formatKES(total_amount)}). Needs pickup assignment.`,
@@ -660,17 +966,16 @@ class StoreService {
     return newOrder;
   }
 
-  public updateOrderStatus(
+  public async updateOrderStatus(
     orderId: string,
     newStatus: OrderStatus,
     note?: string,
     proofPhoto?: string
   ) {
-    const orders = this.getOrders();
-    const orderIndex = orders.findIndex((o) => o.id === orderId);
+    const orderIndex = this.orders.findIndex((o) => o.id === orderId);
     if (orderIndex === -1) return;
 
-    const order = orders[orderIndex];
+    const order = { ...this.orders[orderIndex] };
     order.status = newStatus;
     order.updated_at = new Date().toISOString();
     if (proofPhoto) {
@@ -680,16 +985,29 @@ class StoreService {
       order.driver_notes = note;
     }
 
-    order.status_history.push({
-      status: newStatus,
-      timestamp: new Date().toISOString(),
-      note: note || `Status updated to ${newStatus.replace('_', ' ')}`,
-    });
+    order.status_history = [
+      ...order.status_history,
+      {
+        status: newStatus,
+        timestamp: new Date().toISOString(),
+        note: note || `Status updated to ${newStatus.replace('_', ' ')}`,
+      },
+    ];
 
-    orders[orderIndex] = order;
-    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    this.orders[orderIndex] = order;
 
-    // Send push notification to customer
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        status: newStatus,
+        updated_at: order.updated_at,
+        proof_photo: order.proof_photo || null,
+        driver_notes: order.driver_notes || null,
+        status_history: order.status_history,
+      });
+    } catch (err) {
+      console.warn('updateOrderStatus Firestore error:', err);
+    }
+
     const statusLabels: Record<OrderStatus, string> = {
       scheduled: 'Scheduled for pickup in Nairobi',
       picked_up: 'Picked up by your courier',
@@ -708,7 +1026,6 @@ class StoreService {
       user_id: order.customer_id,
     });
 
-    // Notify driver if out for delivery / picked up
     if (order.driver_id) {
       this.addNotification({
         title: `Stop Updated: #${order.id}`,
@@ -722,21 +1039,28 @@ class StoreService {
     this.notify();
   }
 
-  public assignDriver(orderId: string, driverId: string | null) {
-    const orders = this.getOrders();
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return;
+  public async assignDriver(orderId: string, driverId: string | null) {
+    const orderIndex = this.orders.findIndex((o) => o.id === orderId);
+    if (orderIndex === -1) return;
 
+    const order = { ...this.orders[orderIndex] };
     const drivers = this.getUsers().filter((u) => u.role === 'driver');
     const driver = drivers.find((d) => d.id === driverId);
 
     order.driver_id = driverId;
     order.driver_name = driver ? driver.name : undefined;
+    this.orders[orderIndex] = order;
 
-    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        driver_id: driverId,
+        driver_name: driver ? driver.name : null,
+      });
+    } catch (err) {
+      console.warn('assignDriver Firestore error:', err);
+    }
 
     if (driver) {
-      // 1. Notify the driver
       this.addNotification({
         title: 'New Delivery Assigned',
         body: `You have been assigned to Order #${order.id} (${order.pickup_address})`,
@@ -745,7 +1069,6 @@ class StoreService {
         user_id: driver.id,
       });
 
-      // 2. Notify the customer
       this.addNotification({
         title: 'Driver Assigned',
         body: `${driver.name} has been assigned to pick up/deliver your laundry.`,
@@ -760,97 +1083,76 @@ class StoreService {
 
   // Inventory
   public getInventory(): InventoryItem[] {
+    return this.inventory.length > 0 ? this.inventory : INITIAL_INVENTORY;
+  }
+
+  public async updateInventoryQuantity(id: string, delta: number) {
+    const item = this.inventory.find((it) => it.id === id);
+    if (!item) return;
+
+    const nextQty = Math.max(0, item.quantity + delta);
+    this.inventory = this.inventory.map((it) => (it.id === id ? { ...it, quantity: nextQty } : it));
+
     try {
-      const data = localStorage.getItem(INVENTORY_STORAGE_KEY);
-      return data ? JSON.parse(data) : INITIAL_INVENTORY;
-    } catch {
-      return INITIAL_INVENTORY;
+      await updateDoc(doc(db, 'inventory', id), { quantity: nextQty });
+    } catch (err) {
+      console.warn('updateInventoryQuantity Firestore error:', err);
     }
-  }
-
-  public updateInventoryQuantity(id: string, delta: number) {
-    const items = this.getInventory().map((it) => {
-      if (it.id === id) {
-        const nextQty = Math.max(0, it.quantity + delta);
-        return { ...it, quantity: nextQty };
-      }
-      return it;
-    });
-    localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(items));
     this.notify();
   }
 
-  public setInventoryItem(id: string, updates: Partial<InventoryItem>) {
-    const items = this.getInventory().map((it) => (it.id === id ? { ...it, ...updates } : it));
-    localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(items));
+  public async setInventoryItem(id: string, updates: Partial<InventoryItem>) {
+    this.inventory = this.inventory.map((it) => (it.id === id ? { ...it, ...updates } : it));
+    try {
+      await updateDoc(doc(db, 'inventory', id), updates);
+    } catch (err) {
+      console.warn('setInventoryItem Firestore error:', err);
+    }
     this.notify();
   }
 
-  public addInventoryItem(item: Omit<InventoryItem, 'id'>) {
-    const items = this.getInventory();
-    const newItem: InventoryItem = {
-      ...item,
-      id: `inv-${Date.now()}`,
-    };
-    items.push(newItem);
-    localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(items));
+  public async addInventoryItem(item: Omit<InventoryItem, 'id'>) {
+    const id = `inv-${Date.now()}`;
+    const newItem: InventoryItem = { ...item, id };
+    this.inventory = [...this.inventory, newItem];
+    try {
+      await setDoc(doc(db, 'inventory', id), newItem);
+    } catch (err) {
+      console.warn('addInventoryItem Firestore error:', err);
+    }
     this.notify();
   }
 
   // Notifications
   public getNotifications(user?: { id?: string; role?: UserRole }): AppNotification[] {
-    try {
-      const data = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
-      const list: AppNotification[] = data ? JSON.parse(data) : INITIAL_NOTIFICATIONS;
-      if (!user || !user.role) {
-        return list;
-      }
-      return list.filter((notif) => {
-        // Must match user's role
-        if (notif.target_role !== user.role) {
-          return false;
-        }
-        // If assigned to a specific user_id, check match (or allow if not bound to a specific user)
-        if (notif.user_id && user.id && notif.user_id !== user.id) {
-          return false;
-        }
-        return true;
-      });
-    } catch {
-      return INITIAL_NOTIFICATIONS;
-    }
+    const list = this.notifications.length > 0 ? this.notifications : INITIAL_NOTIFICATIONS;
+    if (!user || !user.role) return list;
+    return list.filter((notif) => {
+      if (notif.target_role !== user.role) return false;
+      if (notif.user_id && user.id && notif.user_id !== user.id) return false;
+      return true;
+    });
   }
 
-  public addNotification(notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) {
-    let list: AppNotification[] = [];
-    try {
-      const data = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
-      list = data ? JSON.parse(data) : INITIAL_NOTIFICATIONS;
-    } catch {
-      list = INITIAL_NOTIFICATIONS;
-    }
-
+  public async addNotification(notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) {
+    const id = `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newNotif: AppNotification = {
       ...notif,
-      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id,
       timestamp: 'Just now',
       read: false,
     };
-    list.unshift(newNotif);
-    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(list));
+    this.notifications = [newNotif, ...this.notifications];
+    try {
+      await setDoc(doc(db, 'notifications', id), newNotif);
+    } catch (err) {
+      console.warn('addNotification Firestore error:', err);
+    }
     this.notify();
   }
 
-  public markNotificationsRead(user?: { id?: string; role?: UserRole }) {
-    let list: AppNotification[] = [];
-    try {
-      const data = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
-      list = data ? JSON.parse(data) : INITIAL_NOTIFICATIONS;
-    } catch {
-      list = INITIAL_NOTIFICATIONS;
-    }
-
-    const updated = list.map((n) => {
+  public async markNotificationsRead(user?: { id?: string; role?: UserRole }) {
+    this.notifications = this.notifications.map((n) => {
       if (!user || !user.role || n.target_role === user.role) {
         if (!user?.id || !n.user_id || n.user_id === user.id) {
           return { ...n, read: true };
@@ -859,73 +1161,38 @@ class StoreService {
       return n;
     });
 
-    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(updated));
+    try {
+      const q = collection(db, 'notifications');
+      const snaps = await getDocs(q);
+      snaps.forEach(async (d) => {
+        const data = d.data() as AppNotification;
+        if (!user || !user.role || data.target_role === user.role) {
+          if (!user?.id || !data.user_id || data.user_id === user.id) {
+            await updateDoc(d.ref, { read: true });
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('markNotificationsRead Firestore error:', err);
+    }
     this.notify();
   }
 
   // User Current Location
   public getLocation(): UserLocation {
-    try {
-      const data = localStorage.getItem(LOCATION_STORAGE_KEY);
-      if (data) {
-        const parsed: UserLocation = JSON.parse(data);
-        // If ISP returned Al Asimah governorate instead of Subhan, correct to Subhan
-        if (parsed.area === 'Al Asimah' || (parsed.city && parsed.city.toLowerCase().includes('al asimah'))) {
-          const subhan: UserLocation = {
-            area: 'Subhan',
-            street: 'Subhan Industrial Area, Block 1',
-            city: 'Subhan, Kuwait',
-            country: 'Kuwait',
-            lat: 29.2392,
-            lng: 47.9856,
-            source: 'manual',
-            isOutsideKenya: true,
-            updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          };
-          localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(subhan));
-          return subhan;
-        }
-        return parsed;
-      }
-      return {
-        area: 'Subhan',
-        street: 'Subhan Industrial Area, Block 1',
-        city: 'Subhan, Kuwait',
-        country: 'Kuwait',
-        lat: 29.2392,
-        lng: 47.9856,
-        source: 'manual',
-        isOutsideKenya: true,
-        updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-    } catch {
-      return {
-        area: 'Subhan',
-        street: 'Subhan Industrial Area, Block 1',
-        city: 'Subhan, Kuwait',
-        country: 'Kuwait',
-        lat: 29.2392,
-        lng: 47.9856,
-        source: 'manual',
-        isOutsideKenya: true,
-        updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-    }
+    return this.userLocation;
   }
 
   public setLocation(location: UserLocation) {
-    localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(location));
+    this.userLocation = location;
     this.notify();
   }
 
-  public resetToSampleData() {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(INITIAL_USERS[0]));
-    localStorage.setItem(ADDRESSES_STORAGE_KEY, JSON.stringify(INITIAL_ADDRESSES));
-    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(INITIAL_ORDERS));
-    localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(INITIAL_INVENTORY));
-    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(INITIAL_NOTIFICATIONS));
-    localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(DEFAULT_USER_LOCATION));
+  public async resetToSampleData() {
+    this.seedInitialOrders();
+    this.seedInitialInventory();
+    this.seedInitialUsers();
+    this.userLocation = DEFAULT_USER_LOCATION;
     this.notify();
   }
 }

@@ -30,7 +30,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -40,18 +40,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     }
 
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const user = await store.loginWithCredentials(identifier.trim(), password.trim() || 'password123');
+      onLoginSuccess(user);
+    } catch (err: any) {
+      console.error('Sign in error:', err);
+      setErrorMsg(err?.message || 'Sign in failed. Please check your credentials.');
+    } finally {
       setLoading(false);
-      try {
-        const user = store.loginWithCredentials(identifier.trim());
-        onLoginSuccess(user);
-      } catch (err) {
-        setErrorMsg('Sign in failed. Please check your credentials.');
-      }
-    }, 400);
+    }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -65,20 +65,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     }
 
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const user = await store.registerUser({
+        name: name.trim(),
+        phone: phone.trim() || '+254 700 000 000',
+        email: email.trim() || `${name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
+        password: password.trim() || 'password123',
+        role: 'customer',
+      });
+      onLoginSuccess(user);
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      setErrorMsg(err?.message || 'Could not create account. Please try again.');
+    } finally {
       setLoading(false);
-      try {
-        const user = store.registerUser({
-          name: name.trim(),
-          phone: phone.trim() || '+254 700 000 000',
-          email: email.trim() || `${name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
-          role: 'customer',
-        });
-        onLoginSuccess(user);
-      } catch (err) {
-        setErrorMsg('Could not create account. Please try again.');
-      }
-    }, 400);
+    }
   };
 
   return (

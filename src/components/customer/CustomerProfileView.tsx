@@ -47,11 +47,11 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     setTimeout(() => setSavedSuccess(false), 2500);
   };
 
-  const handleSaveAddress = (e: React.FormEvent) => {
+  const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStreet.trim()) return;
 
-    store.addAddress({
+    await store.addAddress({
       customer_id: currentUser.id,
       label: newLabel,
       street: newStreet.trim(),
@@ -66,8 +66,8 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     setShowAddAddress(false);
   };
 
-  const handleDeleteAddress = (id: string) => {
-    store.deleteAddress(id);
+  const handleDeleteAddress = async (id: string) => {
+    await store.deleteAddress(id, currentUser.id);
     setAddresses(store.getAddresses(currentUser.id));
   };
 

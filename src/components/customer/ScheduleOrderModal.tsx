@@ -114,10 +114,10 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
     });
   };
 
-  const handleSubmitOrder = () => {
+  const handleSubmitOrder = async () => {
     if (selectedItems.length === 0) return;
 
-    const order = store.createOrder({
+    const order = await store.createOrder({
       customer: currentUser,
       pickup_address: pickupAddress,
       dropoff_address: sameAsPickup ? pickupAddress : dropoffAddress,
