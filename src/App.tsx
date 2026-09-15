@@ -152,10 +152,10 @@ export default function App() {
             />
           )}
 
-          {/* Customer Bottom Navigation Bar (Material 3 with rounded indicator pills) */}
+          {/* Customer Bottom Navigation Bar (Fixed to bottom) */}
           <nav
             id="customer-bottom-nav"
-            className="absolute bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1.5 px-4 flex items-center justify-around z-30 shadow-lg"
+            className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-slate-200 py-1.5 px-4 flex items-center justify-around z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
           >
             <button
               id="cust-nav-home"
@@ -284,10 +284,10 @@ export default function App() {
             <AdminCustomersView users={allUsers} orders={orders} />
           )}
 
-          {/* Admin Bottom Navigation Bar (Compact Material 3 Layout) */}
+          {/* Admin Bottom Navigation Bar (Fixed to bottom) */}
           <nav
             id="admin-bottom-nav"
-            className="absolute bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-2 flex items-center justify-around z-30 shadow-lg"
+            className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-2 flex items-center justify-around z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
           >
             <button
               onClick={() => setAdminTab('dashboard')}
