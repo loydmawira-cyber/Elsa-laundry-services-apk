@@ -93,6 +93,7 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
             <h3 className="text-base font-bold">
               {activeOrder.status === 'scheduled' && 'Pickup Scheduled'}
               {activeOrder.status === 'picked_up' && 'In Courier Transit to Hub'}
+              {activeOrder.status === 'at_facility' && 'Arrived at Facility & Queued'}
               {activeOrder.status === 'washing' && 'Eco-Wash Cycle in Progress'}
               {activeOrder.status === 'ready' && 'Ready for Delivery Route'}
               {activeOrder.status === 'out_for_delivery' && 'Driver is Heading to You!'}

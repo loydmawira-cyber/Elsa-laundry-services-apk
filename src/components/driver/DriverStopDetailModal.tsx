@@ -74,7 +74,14 @@ export const DriverStopDetailModal: React.FC<DriverStopDetailModalProps> = ({
   const handleCompleteStop = () => {
     setIsSubmitting(true);
     setTimeout(() => {
-      const nextStatus: OrderStatus = isPickup ? 'picked_up' : 'delivered';
+      let nextStatus: OrderStatus;
+      if (isPickup) {
+        nextStatus = 'picked_up';
+      } else if (order.status === 'ready') {
+        nextStatus = 'out_for_delivery';
+      } else {
+        nextStatus = 'delivered';
+      }
       store.updateOrderStatus(order.id, nextStatus, driverNotes, photoUrl || undefined);
       setIsSubmitting(false);
       onStopCompleted();
@@ -290,17 +297,27 @@ export const DriverStopDetailModal: React.FC<DriverStopDetailModalProps> = ({
             className={`w-full h-14 rounded-2xl text-sm font-extrabold text-white flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-all ${
               isPickup
                 ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
+                : order.status === 'ready'
+                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30'
                 : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
             }`}
           >
             {isSubmitting ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : isPickup ? (
+              <>
+                <CheckCircle2 className="w-5 h-5" />
+                <span>Mark Stop as Picked Up</span>
+              </>
+            ) : order.status === 'ready' ? (
+              <>
+                <Truck className="w-5 h-5" />
+                <span>Start Delivery</span>
+              </>
             ) : (
               <>
                 <CheckCircle2 className="w-5 h-5" />
-                <span>
-                  {isPickup ? 'Mark Stop as Picked Up' : 'Mark Stop as Delivered'}
-                </span>
+                <span>Mark Delivered</span>
               </>
             )}
           </button>

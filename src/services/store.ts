@@ -733,9 +733,10 @@ class StoreService {
     const statusLabels: Record<OrderStatus, string> = {
       scheduled: 'Scheduled for pickup in Nairobi',
       picked_up: 'Picked up by courier',
+      at_facility: 'Your laundry has arrived and is queued for washing',
       washing: 'Now washing at Elsa Laundry facility',
       ready: 'Folded & packaged ready for dispatch',
-      out_for_delivery: 'Out for delivery to your location! 🚚',
+      out_for_delivery: 'Your driver is on the way with your laundry! 🚚',
       delivered: 'Delivered to your doorstep! 🎉',
       cancelled: 'Cancelled',
     };

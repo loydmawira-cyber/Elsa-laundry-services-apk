@@ -40,6 +40,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const statusCounts = {
     scheduled: orders.filter((o) => o.status === 'scheduled').length,
     picked_up: orders.filter((o) => o.status === 'picked_up').length,
+    at_facility: orders.filter((o) => o.status === 'at_facility').length,
     washing: orders.filter((o) => o.status === 'washing').length,
     ready: orders.filter((o) => o.status === 'ready').length,
     out_for_delivery: orders.filter((o) => o.status === 'out_for_delivery').length,

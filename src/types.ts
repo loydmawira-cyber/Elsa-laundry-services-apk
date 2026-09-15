@@ -3,6 +3,7 @@ export type UserRole = 'customer' | 'driver' | 'admin';
 export type OrderStatus =
   | 'scheduled'
   | 'picked_up'
+  | 'at_facility'
   | 'washing'
   | 'ready'
   | 'out_for_delivery'

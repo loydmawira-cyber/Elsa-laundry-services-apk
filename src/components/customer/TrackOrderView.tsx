@@ -34,7 +34,8 @@ const STEP_DEFINITIONS: {
 }[] = [
   { status: 'scheduled', label: 'Scheduled', subtext: 'Order placed & courier queued', icon: 'Clock' },
   { status: 'picked_up', label: 'Picked Up', subtext: 'Driver collected laundry bags', icon: 'Truck' },
-  { status: 'washing', label: 'Washing Cycle', subtext: 'Eco-wash & sorting active', icon: 'Sparkles' },
+  { status: 'at_facility', label: 'At Facility', subtext: 'Arrived at hub & queued for washing', icon: 'MapPin' },
+  { status: 'washing', label: 'Washing Cycle', subtext: 'Eco-wash & care active', icon: 'Sparkles' },
   { status: 'ready', label: 'Ready & Packed', subtext: 'Pressed, folded & inspected', icon: 'Package' },
   { status: 'out_for_delivery', label: 'Out for Delivery', subtext: 'Van en route to your address', icon: 'Navigation' },
   { status: 'delivered', label: 'Delivered', subtext: 'Safely dropped at your door', icon: 'CheckCircle2' },

@@ -64,7 +64,7 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
         address: order.pickup_address,
         window: order.pickup_window,
       });
-    } else if (order.status === 'picked_up' || order.status === 'washing') {
+    } else if (order.status === 'picked_up' || order.status === 'at_facility' || order.status === 'washing') {
       allStops.push({
         stopNumber: stopCounter++,
         order,
@@ -253,6 +253,10 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
                   {stop.completed ? (
                     <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Done
+                    </span>
+                  ) : stop.order.status === 'out_for_delivery' ? (
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 animate-pulse">
+                      🚚 Out for Delivery
                     </span>
                   ) : (
                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">

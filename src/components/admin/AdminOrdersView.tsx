@@ -85,6 +85,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
             { id: 'all', label: 'All Orders' },
             { id: 'scheduled', label: 'Scheduled' },
             { id: 'picked_up', label: 'Picked Up' },
+            { id: 'at_facility', label: 'At Facility' },
             { id: 'washing', label: 'Washing' },
             { id: 'ready', label: 'Ready' },
             { id: 'out_for_delivery', label: 'Out for Delivery' },
@@ -222,11 +223,12 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
               {/* STATUS OVERRIDE */}
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
                 <label className="font-bold text-slate-800">Operational Status</label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   {(
                     [
                       'scheduled',
                       'picked_up',
+                      'at_facility',
                       'washing',
                       'ready',
                       'out_for_delivery',
@@ -243,7 +245,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                           : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                       }`}
                     >
-                      {st.replace('_', ' ')}
+                      {st === 'at_facility' ? 'At Facility (Queued)' : st.replace('_', ' ')}
                     </button>
                   ))}
                 </div>
