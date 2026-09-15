@@ -21,11 +21,11 @@ interface LoginViewProps {
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
-  const [identifier, setIdentifier] = useState('sarah.wanjiku@gmail.com');
-  const [password, setPassword] = useState('password123');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('+254 712 345 678');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,13 +39,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       return;
     }
 
+    if (!password.trim()) {
+      setErrorMsg('Please enter your password');
+      return;
+    }
+
     setLoading(true);
     try {
-      const user = await store.loginWithCredentials(identifier.trim(), password.trim() || 'password123');
+      const user = await store.loginWithCredentials(identifier.trim(), password.trim());
       onLoginSuccess(user);
     } catch (err: any) {
       console.error('Sign in error:', err);
-      setErrorMsg(err?.message || 'Sign in failed. Please check your credentials.');
+      setErrorMsg(err?.message || 'Invalid email/phone or password.');
     } finally {
       setLoading(false);
     }
@@ -63,14 +68,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       setErrorMsg('Please provide a Kenyan phone number (+254) or email address');
       return;
     }
+    if (!password.trim() || password.trim().length < 6) {
+      setErrorMsg('Please create a password of at least 6 characters');
+      return;
+    }
 
     setLoading(true);
     try {
       const user = await store.registerUser({
         name: name.trim(),
         phone: phone.trim() || '+254 700 000 000',
-        email: email.trim() || `${name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
-        password: password.trim() || 'password123',
+        email: email.trim(),
+        password: password.trim(),
         role: 'customer',
       });
       onLoginSuccess(user);
