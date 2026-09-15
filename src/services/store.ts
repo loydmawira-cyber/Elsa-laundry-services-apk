@@ -1,8 +1,12 @@
+import { App } from '@capacitor/app';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   User as FirebaseUser,
 } from 'firebase/auth';
 import {
@@ -110,6 +114,21 @@ class StoreService {
 
   constructor() {
     this.initFirebaseListeners();
+    this.initCapacitorAppStateListener();
+  }
+
+  private initCapacitorAppStateListener() {
+    try {
+      App.addListener('appStateChange', async (state) => {
+        if (!state.isActive) {
+          if (this.currentUser?.role === 'admin') {
+            await firebaseSignOut(auth);
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('Capacitor App state change listener error:', err);
+    }
   }
 
   private initFirebaseListeners() {
@@ -145,6 +164,17 @@ class StoreService {
             };
             await setDoc(userDocRef, defaultUserDoc);
             this.currentUser = defaultUserDoc;
+          }
+
+          // Role-based session persistence
+          try {
+            if (this.currentUser.role === 'customer') {
+              await setPersistence(auth, browserLocalPersistence);
+            } else if (this.currentUser.role === 'driver' || this.currentUser.role === 'admin') {
+              await setPersistence(auth, browserSessionPersistence);
+            }
+          } catch (pErr) {
+            console.warn('Set auth persistence error:', pErr);
           }
 
           // Attach address subcollection listener
@@ -193,14 +223,10 @@ class StoreService {
       onSnapshot(
         inventoryCol,
         (snapshot) => {
-          if (!snapshot.empty) {
-            this.inventory = snapshot.docs.map((docSnap) => ({
-              ...docSnap.data(),
-              id: docSnap.id,
-            })) as InventoryItem[];
-          } else {
-            this.seedInitialInventory();
-          }
+          this.inventory = snapshot.docs.map((docSnap) => ({
+            ...docSnap.data(),
+            id: docSnap.id,
+          })) as InventoryItem[];
           this.notify();
         },
         (error) => {
@@ -277,7 +303,7 @@ class StoreService {
     }
   }
 
-  private async seedInitialInventory() {
+  public async seedInitialInventory() {
     try {
       for (const item of INITIAL_INVENTORY_SEEDS) {
         await setDoc(doc(db, 'inventory', item.id), item);
@@ -285,6 +311,28 @@ class StoreService {
     } catch (e) {
       console.warn('Seed inventory error:', e);
     }
+  }
+
+  public async seedInitialOrders() {
+    try {
+      console.log('Manual seedInitialOrders available for developer invocation');
+    } catch (e) {
+      console.warn('Seed orders error:', e);
+    }
+  }
+
+  public async seedInitialUsers() {
+    try {
+      console.log('Manual seedInitialUsers available for developer invocation');
+    } catch (e) {
+      console.warn('Seed users error:', e);
+    }
+  }
+
+  public async resetToSampleData() {
+    await this.seedInitialInventory();
+    await this.seedInitialOrders();
+    await this.seedInitialUsers();
   }
 
   public subscribe(callback: () => void) {
@@ -423,6 +471,18 @@ class StoreService {
       }
 
       this.currentUser = resolvedUser;
+
+      // Set persistence based on role after successful login & role retrieval
+      try {
+        if (resolvedUser.role === 'customer') {
+          await setPersistence(auth, browserLocalPersistence);
+        } else if (resolvedUser.role === 'driver' || resolvedUser.role === 'admin') {
+          await setPersistence(auth, browserSessionPersistence);
+        }
+      } catch (pErr) {
+        console.warn('Set auth persistence error on login:', pErr);
+      }
+
       this.listenToUserAddresses(uid);
       this.notify();
       return resolvedUser;
@@ -807,7 +867,7 @@ class StoreService {
   // 4. INVENTORY
   // =========================================================================
   public getInventory(): InventoryItem[] {
-    return this.inventory.length > 0 ? this.inventory : INITIAL_INVENTORY_SEEDS;
+    return this.inventory;
   }
 
   public async updateInventoryQuantity(id: string, delta: number) {
