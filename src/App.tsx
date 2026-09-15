@@ -17,7 +17,7 @@ import {
 import { User, UserRole, Order, InventoryItem } from './types';
 import { store } from './services/store';
 import { AndroidFrame } from './components/AndroidFrame';
-import { AuthModal } from './components/AuthModal';
+import { LoginView } from './components/LoginView';
 
 // Customer Components
 import { CustomerHome } from './components/customer/CustomerHome';
@@ -37,7 +37,7 @@ import { AdminStaffView } from './components/admin/AdminStaffView';
 import { AdminCustomersView } from './components/admin/AdminCustomersView';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User>(store.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<User | null>(store.getCurrentUser());
   const [orders, setOrders] = useState<Order[]>(store.getOrders());
   const [inventory, setInventory] = useState<InventoryItem[]>(store.getInventory());
   const [allUsers, setAllUsers] = useState<User[]>(store.getUsers());
@@ -56,9 +56,6 @@ export default function App() {
   >('dashboard');
   const [adminSelectedOrderId, setAdminSelectedOrderId] = useState<string | null>(null);
 
-  // Auth Dialog State
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-
   // Sync state on store changes
   useEffect(() => {
     const unsubscribe = store.subscribe(() => {
@@ -70,11 +67,15 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  const handleRoleSwitch = (role: UserRole) => {
-    const user = store.loginAs(role);
+  const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
-    if (role === 'customer') setCustomerTab('home');
-    if (role === 'admin') setAdminTab('dashboard');
+    if (user.role === 'customer') setCustomerTab('home');
+    if (user.role === 'admin') setAdminTab('dashboard');
+  };
+
+  const handleLogout = () => {
+    store.logout();
+    setCurrentUser(null);
   };
 
   const handleReorder = (order: Order) => {
@@ -97,13 +98,19 @@ export default function App() {
   return (
     <AndroidFrame
       currentUser={currentUser}
-      onSwitchRole={handleRoleSwitch}
-      onOpenAuth={() => setIsAuthOpen(true)}
+      onLogout={handleLogout}
     >
+      {/* ------------------------------------------------------------- */}
+      {/* 0. AUTH / LOGIN VIEW (WHEN NOT LOGGED IN)                    */}
+      {/* ------------------------------------------------------------- */}
+      {!currentUser && (
+        <LoginView onLoginSuccess={handleLoginSuccess} />
+      )}
+
       {/* ------------------------------------------------------------- */}
       {/* 1. CUSTOMER ROLE SCREENS                                     */}
       {/* ------------------------------------------------------------- */}
-      {currentUser.role === 'customer' && (
+      {currentUser && currentUser.role === 'customer' && (
         <div className="flex-1 flex flex-col h-full relative">
           {customerTab === 'home' && (
             <CustomerHome
@@ -141,7 +148,7 @@ export default function App() {
           {customerTab === 'profile' && (
             <CustomerProfileView
               currentUser={currentUser}
-              onOpenAuth={() => setIsAuthOpen(true)}
+              onLogout={handleLogout}
             />
           )}
 
@@ -232,16 +239,20 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* 2. DRIVER ROLE SCREENS                                       */}
       {/* ------------------------------------------------------------- */}
-      {currentUser.role === 'driver' && (
+      {currentUser && currentUser.role === 'driver' && (
         <div className="flex-1 flex flex-col h-full">
-          <DriverRouteView currentUser={currentUser} orders={orders} />
+          <DriverRouteView
+            currentUser={currentUser}
+            orders={orders}
+            onLogout={handleLogout}
+          />
         </div>
       )}
 
       {/* ------------------------------------------------------------- */}
       {/* 3. ADMIN ROLE SCREENS                                        */}
       {/* ------------------------------------------------------------- */}
-      {currentUser.role === 'admin' && (
+      {currentUser && currentUser.role === 'admin' && (
         <div className="flex-1 flex flex-col h-full relative">
           {adminTab === 'dashboard' && (
             <AdminDashboardView
@@ -253,6 +264,7 @@ export default function App() {
                 setAdminSelectedOrderId(id);
                 setAdminTab('orders');
               }}
+              onLogout={handleLogout}
             />
           )}
 
@@ -374,26 +386,18 @@ export default function App() {
       )}
 
       {/* Schedule Order Full Flow Modal */}
-      <ScheduleOrderModal
-        isOpen={isScheduleOpen}
-        onClose={() => setIsScheduleOpen(false)}
-        currentUser={currentUser}
-        initialItems={reorderItems}
-        onOrderCreated={(orderId) => {
-          setTrackOrderId(orderId);
-          setCustomerTab('track');
-        }}
-      />
-
-      {/* Account Login / Firebase Auth Modal */}
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        onLoginSuccess={(role) => {
-          if (role === 'customer') setCustomerTab('home');
-          if (role === 'admin') setAdminTab('dashboard');
-        }}
-      />
+      {currentUser && (
+        <ScheduleOrderModal
+          isOpen={isScheduleOpen}
+          onClose={() => setIsScheduleOpen(false)}
+          currentUser={currentUser}
+          initialItems={reorderItems}
+          onOrderCreated={(orderId) => {
+            setTrackOrderId(orderId);
+            setCustomerTab('track');
+          }}
+        />
+      )}
     </AndroidFrame>
   );
 }

@@ -63,6 +63,15 @@ export const DETERGENT_OPTIONS = [
   { id: 'free_clear', name: 'Gentle Silk & Wool Softening Conditioner', description: 'PH-neutral formula preserving delicate fabrics & knitwear.' },
 ];
 
+export const LAUNDRY_OWNER_CONTACT = {
+  name: 'Elsie Kaburu',
+  phone: '+254 796 896 239',
+  rawPhone: '+254796896239',
+  email: 'Elsierichard76@gmail.com',
+  businessName: 'Elsa Laundry Services',
+  tagline: 'For a spotless clean',
+};
+
 const INITIAL_USERS: User[] = [
   {
     id: 'cust-1',
@@ -91,9 +100,9 @@ const INITIAL_USERS: User[] = [
   },
   {
     id: 'admin-1',
-    name: 'Elsa Wanjiru',
-    phone: '+254 700 112 233',
-    email: 'admin@elsalaundry.co.ke',
+    name: 'Elsie Kaburu',
+    phone: '+254 796 896 239',
+    email: 'Elsierichard76@gmail.com',
     role: 'admin',
     created_at: '2026-06-01T12:00:00Z',
   },
@@ -420,18 +429,51 @@ class StoreService {
     }
   }
 
-  public getCurrentUser(): User {
+  public getCurrentUser(): User | null {
     try {
       const data = localStorage.getItem(CURRENT_USER_KEY);
-      return data ? JSON.parse(data) : INITIAL_USERS[0];
+      if (!data || data === 'null' || data === 'undefined') return null;
+      return JSON.parse(data);
     } catch {
-      return INITIAL_USERS[0];
+      return null;
     }
   }
 
-  public setCurrentUser(user: User) {
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  public setCurrentUser(user: User | null) {
+    if (!user) {
+      localStorage.removeItem(CURRENT_USER_KEY);
+    } else {
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+    }
     this.notify();
+  }
+
+  public logout() {
+    localStorage.removeItem(CURRENT_USER_KEY);
+    this.notify();
+  }
+
+  public registerUser(params: {
+    name: string;
+    phone: string;
+    email: string;
+    role: UserRole;
+    default_detergent?: string;
+  }): User {
+    const users = this.getUsers();
+    const newUser: User = {
+      id: `user-${Date.now()}`,
+      name: params.name,
+      phone: params.phone,
+      email: params.email,
+      role: params.role,
+      created_at: new Date().toISOString(),
+      default_detergent: params.default_detergent || 'Hypoallergenic Gentle Wash (Fragrance Free)',
+    };
+    users.push(newUser);
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    this.setCurrentUser(newUser);
+    return newUser;
   }
 
   public loginAs(role: 'customer' | 'driver' | 'admin'): User {
@@ -441,21 +483,21 @@ class StoreService {
     return user;
   }
 
-  public loginWithCredentials(identifier: string, role?: 'customer' | 'driver' | 'admin'): User {
+  public loginWithCredentials(identifier: string): User {
     const users = this.getUsers();
     const cleanId = identifier.trim().toLowerCase();
+    const cleanDigits = identifier.replace(/[^0-9]/g, '');
+
     let found = users.find(
       (u) =>
         u.email.toLowerCase() === cleanId ||
-        u.phone.replace(/[^0-9]/g, '') === cleanId.replace(/[^0-9]/g, '')
+        (cleanDigits.length >= 8 && u.phone.replace(/[^0-9]/g, '').endsWith(cleanDigits.slice(-8)))
     );
     if (!found) {
-      // Create ad-hoc user if logging in with custom phone/email
-      const isKenyanPhone = /^(?:\+254|0)?7\d{8}$/.test(cleanId.replace(/\s+/g, ''));
+      // Create account if logging in with new phone/email
+      const isKenyanPhone = /^(?:\+254|0)?7\d{8}$/.test(cleanDigits);
       const formattedPhone = isKenyanPhone
-        ? cleanId.startsWith('+')
-          ? cleanId
-          : `+254 ${cleanId.slice(-9)}`
+        ? `+254 ${cleanDigits.slice(-9)}`
         : identifier.includes('@')
         ? '+254 700 000 111'
         : identifier;
@@ -464,8 +506,8 @@ class StoreService {
         id: `user-${Date.now()}`,
         name: identifier.includes('@') ? identifier.split('@')[0] : 'Valued Customer',
         phone: formattedPhone,
-        email: identifier.includes('@') ? identifier : `${cleanId.replace(/[^0-9]/g, '')}@gmail.com`,
-        role: role || 'customer',
+        email: identifier.includes('@') ? identifier : `${cleanDigits}@gmail.com`,
+        role: cleanId.includes('admin') ? 'admin' : cleanId.includes('driver') ? 'driver' : 'customer',
         created_at: new Date().toISOString(),
         default_detergent: 'Hypoallergenic Gentle Wash (Fragrance Free)',
       };
@@ -481,7 +523,7 @@ class StoreService {
     const users = this.getUsers().map((u) => (u.id === userId ? { ...u, ...updates } : u));
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
     const current = this.getCurrentUser();
-    if (current.id === userId) {
+    if (current && current.id === userId) {
       this.setCurrentUser({ ...current, ...updates });
     } else {
       this.notify();

@@ -19,12 +19,12 @@ import { store, DETERGENT_OPTIONS } from '../../services/store';
 
 interface CustomerProfileViewProps {
   currentUser: User;
-  onOpenAuth: () => void;
+  onLogout?: () => void;
 }
 
 export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   currentUser,
-  onOpenAuth,
+  onLogout,
 }) => {
   const [addresses, setAddresses] = useState<Address[]>(
     store.getAddresses(currentUser.id)
@@ -260,13 +260,61 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
         </div>
       </div>
 
+      {/* Customer Support & Owner Contact */}
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <h3 className="font-bold text-xs text-slate-900">Customer Service & Owner</h3>
+        </div>
+
+        <div className="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-xs font-bold text-slate-900">Elsie Kaburu</h4>
+              <p className="text-[11px] text-blue-700 font-medium">Owner & Customer Support Lead</p>
+            </div>
+            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+              Available 7 Days
+            </span>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <a
+              href="tel:+254796896239"
+              className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span>Call Helpline</span>
+            </a>
+            <a
+              href="mailto:Elsierichard76@gmail.com"
+              className="flex-1 py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+            >
+              <Mail className="w-3.5 h-3.5 text-blue-600" />
+              <span>Email Elsie</span>
+            </a>
+          </div>
+
+          <div className="pt-2 border-t border-blue-100/80 flex flex-col gap-1 text-[11px] text-slate-600">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Direct Phone:</span>
+              <span className="font-bold text-slate-900">+254 796 896 239</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Official Email:</span>
+              <span className="font-bold text-slate-900 truncate">Elsierichard76@gmail.com</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Account Actions */}
       <button
-        onClick={onOpenAuth}
-        className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-slate-200"
+        onClick={onLogout}
+        className="w-full py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-rose-200 shadow-xs"
       >
         <LogOut className="w-4 h-4" />
-        <span>Switch Account or Sign Out</span>
+        <span>Sign Out of Account</span>
       </button>
     </div>
   );

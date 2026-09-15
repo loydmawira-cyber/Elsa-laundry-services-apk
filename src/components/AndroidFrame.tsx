@@ -25,9 +25,8 @@ import { TopLaundryBanner } from './TopLaundryBanner';
 
 interface AndroidFrameProps {
   children: React.ReactNode;
-  currentUser: User;
-  onSwitchRole: (role: 'customer' | 'driver' | 'admin') => void;
-  onOpenAuth: () => void;
+  currentUser: User | null;
+  onLogout: () => void;
   title?: string;
   onBack?: () => void;
   activeTab?: string;
@@ -36,8 +35,7 @@ interface AndroidFrameProps {
 export const AndroidFrame: React.FC<AndroidFrameProps> = ({
   children,
   currentUser,
-  onSwitchRole,
-  onOpenAuth,
+  onLogout,
   title,
   onBack,
 }) => {
@@ -61,6 +59,12 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
   }, []);
 
   useEffect(() => {
+    if (!currentUser) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
     const updateNotifs = () => {
       const notifs = store.getNotifications({ id: currentUser.id, role: currentUser.role });
       setNotifications(notifs);
@@ -82,113 +86,18 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
     });
 
     return () => unsubscribe();
-  }, [currentUser.id, currentUser.role]);
+  }, [currentUser?.id, currentUser?.role]);
 
   const handleClearNotif = () => {
-    store.markNotificationsRead({ id: currentUser.id, role: currentUser.role });
+    if (currentUser) {
+      store.markNotificationsRead({ id: currentUser.id, role: currentUser.role });
+    }
     setActiveNotification(null);
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-start p-2 sm:p-4 md:p-6 font-sans">
-      {/* Top Meta Control Bar: Role Switching, Frame Toggle, Shop Branding */}
-      <header
-        id="app-meta-header"
-        className="w-full max-w-5xl mb-4 flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-800/90 border border-slate-700/80 rounded-2xl shadow-xl backdrop-blur-md"
-      >
-        <div className="flex items-center gap-3">
-          <ElsaLogo size="md" withGlow />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-bold text-base tracking-tight text-white">Elsa Laundry Services</h1>
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                Android App • Kenya
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">
-              For a spotless clean • +254 746 438 776
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Role Switcher for Evaluator/User */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-slate-400 hidden sm:inline font-medium">Switch Role:</span>
-          <div className="inline-flex p-1 bg-slate-900/90 rounded-xl border border-slate-700/70">
-            <button
-              id="role-btn-customer"
-              onClick={() => onSwitchRole('customer')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                currentUser.role === 'customer'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <UserIcon className="w-3.5 h-3.5" />
-              <span>Customer</span>
-            </button>
-            <button
-              id="role-btn-driver"
-              onClick={() => onSwitchRole('driver')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                currentUser.role === 'driver'
-                  ? 'bg-amber-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Truck className="w-3.5 h-3.5" />
-              <span>Driver</span>
-            </button>
-            <button
-              id="role-btn-admin"
-              onClick={() => onSwitchRole('admin')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                currentUser.role === 'admin'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Admin</span>
-            </button>
-          </div>
-
-          {/* Account / Reset Actions */}
-          <button
-            id="auth-open-button"
-            onClick={onOpenAuth}
-            title="Manage Accounts & Sign In"
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 transition-colors"
-          >
-            <UserCheck className="w-3.5 h-3.5 text-blue-400" />
-            <span className="truncate max-w-[90px]">{currentUser.name.split(' ')[0]}</span>
-          </button>
-
-          <button
-            id="toggle-frame-button"
-            onClick={() => setIsFramed(!isFramed)}
-            title={isFramed ? 'Switch to Full Screen View' : 'Switch to Android Phone Bezel'}
-            className="p-1.5 rounded-xl bg-slate-700/80 hover:bg-slate-600 text-slate-300 border border-slate-600 transition-colors"
-          >
-            {isFramed ? <Maximize2 className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
-          </button>
-
-          <button
-            id="reset-sample-data-btn"
-            onClick={() => {
-              if (confirm('Reset sample laundry orders and inventory to initial demo state?')) {
-                store.resetToSampleData();
-              }
-            }}
-            title="Reset Mock Database"
-            className="p-1.5 rounded-xl bg-slate-700/80 hover:bg-slate-600 text-slate-300 border border-slate-600 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* Main Container - Either Phone Frame or Full Responsive Container */}
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-0 sm:p-4 font-sans">
+      {/* Main Phone Container */}
       <div
         className={`w-full transition-all duration-300 flex justify-center ${
           isFramed ? 'max-w-[420px]' : 'max-w-4xl'
@@ -217,20 +126,22 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
             )}
 
             <div className="flex items-center gap-2 text-slate-700">
-              <button
-                id="notification-bell-btn"
-                onClick={() => setShowNotifDrawer(!showNotifDrawer)}
-                className="relative p-0.5 hover:text-blue-600 transition-colors"
-                title="Notifications"
-              >
-                <Bell className="w-3.5 h-3.5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                )}
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500"></span>
-                )}
-              </button>
+              {currentUser && (
+                <button
+                  id="notification-bell-btn"
+                  onClick={() => setShowNotifDrawer(!showNotifDrawer)}
+                  className="relative p-0.5 hover:text-blue-600 transition-colors"
+                  title="Notifications"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                  )}
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500"></span>
+                  )}
+                </button>
+              )}
               <Signal className="w-3.5 h-3.5" />
               <Wifi className="w-3.5 h-3.5" />
               <div className="flex items-center gap-0.5">
@@ -241,7 +152,7 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
           </div>
 
           {/* Android Heads-Up Push Notification Toast (Material Banner) */}
-          {activeNotification && (
+          {activeNotification && currentUser && (
             <div
               id="android-push-toast"
               className="absolute top-12 left-3 right-3 z-50 bg-slate-900/95 text-white p-3 rounded-2xl shadow-xl border border-slate-700/80 backdrop-blur-md flex items-start gap-3 animate-in slide-in-from-top duration-200"
@@ -270,7 +181,7 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
           )}
 
           {/* Notification Drawer Sheet */}
-          {showNotifDrawer && (
+          {showNotifDrawer && currentUser && (
             <div
               id="notification-drawer"
               className="absolute inset-x-0 top-11 bg-white/95 backdrop-blur-md shadow-2xl border-b border-slate-200 z-40 p-4 max-h-[360px] overflow-y-auto animate-in slide-in-from-top-2 duration-150"
@@ -326,7 +237,7 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
           )}
 
           {/* Global Top Banner: Laundry Name & User Current Location */}
-          <TopLaundryBanner currentUser={currentUser} />
+          {currentUser && <TopLaundryBanner currentUser={currentUser} />}
 
           {/* Main App Content Viewport */}
           <main className="flex-1 overflow-y-auto flex flex-col bg-slate-50 relative">

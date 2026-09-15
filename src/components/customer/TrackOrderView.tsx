@@ -354,6 +354,22 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
           </span>
         </div>
       </div>
+
+      {/* Order Support & Customer Service */}
+      <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-3xl flex items-center justify-between text-xs">
+        <div>
+          <span className="text-[10px] uppercase font-bold text-slate-400">Order Questions?</span>
+          <h4 className="font-bold text-slate-800">Elsie Kaburu (Customer Care)</h4>
+          <p className="text-[11px] text-blue-600 font-medium">+254 796 896 239</p>
+        </div>
+        <a
+          href="tel:+254796896239"
+          className="py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+        >
+          <Phone className="w-3.5 h-3.5" />
+          <span>Call Support</span>
+        </a>
+      </div>
     </div>
   );
 };

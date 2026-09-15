@@ -12,6 +12,7 @@ import {
   Sparkles,
   AlertCircle,
   FileText,
+  LogOut,
 } from 'lucide-react';
 import { Order, User, OrderStatus } from '../../types';
 import { DriverStopDetailModal } from './DriverStopDetailModal';
@@ -19,11 +20,13 @@ import { DriverStopDetailModal } from './DriverStopDetailModal';
 interface DriverRouteViewProps {
   currentUser: User;
   orders: Order[];
+  onLogout?: () => void;
 }
 
 export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
   currentUser,
   orders,
+  onLogout,
 }) => {
   const [filterMode, setFilterMode] = useState<'all' | 'pickups' | 'deliveries'>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -127,14 +130,27 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
             </div>
             <div>
               <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
-                Driver Active Shift
+                Driver: {currentUser.name}
               </span>
               <h2 className="text-base font-extrabold text-white">Today's Route Schedule</h2>
             </div>
           </div>
-          <span className="text-xs bg-slate-800 text-slate-300 font-bold px-2.5 py-1 rounded-xl border border-slate-700">
-            Van #4
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs bg-slate-800 text-slate-300 font-bold px-2.5 py-1 rounded-xl border border-slate-700">
+              Van #4
+            </span>
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                title="Sign Out"
+                className="p-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Progress Metrics */}

@@ -10,6 +10,7 @@ import {
   Users,
   Layers,
   ChevronRight,
+  LogOut,
 } from 'lucide-react';
 import { Order, InventoryItem, User } from '../../types';
 
@@ -19,6 +20,7 @@ interface AdminDashboardViewProps {
   users: User[];
   onNavigateTab: (tab: 'orders' | 'inventory' | 'staff' | 'customers') => void;
   onSelectOrder: (orderId: string) => void;
+  onLogout?: () => void;
 }
 
 export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
@@ -27,6 +29,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   users,
   onNavigateTab,
   onSelectOrder,
+  onLogout,
 }) => {
   // Key Metrics
   const todayOrders = orders; // All current cycle orders
@@ -59,10 +62,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             Operations & Logistics Control
           </span>
           <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Admin Dashboard</h2>
+          <p className="text-[11px] text-slate-500">
+            Owner: <span className="font-bold text-slate-800">Elsie Kaburu</span> • Elsierichard76@gmail.com
+          </p>
         </div>
-        <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-xl">
-          Today
-        </span>
+        <div className="flex items-center gap-2">
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              title="Sign Out"
+              className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold flex items-center gap-1 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Top 3 Metric Summary Cards (Compact) */}

@@ -29,7 +29,7 @@ import {
 } from '../services/geolocation';
 
 interface TopLaundryBannerProps {
-  currentUser: User;
+  currentUser: User | null;
 }
 
 export const TopLaundryBanner: React.FC<TopLaundryBannerProps> = ({ currentUser }) => {
@@ -50,7 +50,7 @@ export const TopLaundryBanner: React.FC<TopLaundryBannerProps> = ({ currentUser 
 
   // Customer's saved addresses
   const [savedAddresses, setSavedAddresses] = useState<Address[]>(
-    store.getAddresses(currentUser.id)
+    currentUser ? store.getAddresses(currentUser.id) : []
   );
 
   // Perform exact real-time GPS detection with high accuracy
@@ -92,7 +92,7 @@ export const TopLaundryBanner: React.FC<TopLaundryBannerProps> = ({ currentUser 
           const ipSucceeded = await tryIpFallback();
           setIsDetectingGps(false);
           if (!ipSucceeded) {
-            const userSaved = store.getAddresses(currentUser.id);
+            const userSaved = currentUser ? store.getAddresses(currentUser.id) : [];
             const defaultAddr = userSaved.find((a) => a.is_default) || userSaved[0];
             if (defaultAddr) {
               store.setLocation({
@@ -144,15 +144,15 @@ export const TopLaundryBanner: React.FC<TopLaundryBannerProps> = ({ currentUser 
   // Auto-detect location on initial load
   useEffect(() => {
     detectUserRealLocation(false);
-  }, [currentUser.id]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     const unsub = store.subscribe(() => {
       setCurrentLocation(store.getLocation());
-      setSavedAddresses(store.getAddresses(currentUser.id));
+      setSavedAddresses(currentUser ? store.getAddresses(currentUser.id) : []);
     });
     return () => unsub();
-  }, [currentUser.id]);
+  }, [currentUser?.id]);
 
   const handleSelectSearchResult = (result: PlaceSearchResult) => {
     const updated: UserLocation = {
@@ -243,7 +243,7 @@ export const TopLaundryBanner: React.FC<TopLaundryBannerProps> = ({ currentUser 
                 </span>
               </div>
               <p className="text-[10px] text-blue-200/80 font-medium truncate">
-                For a spotless clean • +254 746 438 776
+                For a spotless clean • +254 796 896 239
               </p>
             </div>
           </div>

@@ -209,6 +209,28 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
           <span>Eco-Friendly Detergents</span>
         </div>
       </div>
+
+      {/* Customer Service & Owner Helpline */}
+      <div className="p-3.5 bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-2xl flex items-center justify-between shadow-xs">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-blue-300">Customer Helpline</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          </div>
+          <p className="text-xs font-bold text-white">Elsie Kaburu (Owner)</p>
+          <p className="text-[11px] text-blue-200">+254 796 896 239</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <a
+            href="tel:+254796896239"
+            className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-sm flex items-center gap-1 text-xs font-bold transition-all"
+            title="Call Customer Service"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Call</span>
+          </a>
+        </div>
+      </div>
     </div>
   );
 };
