@@ -8,7 +8,10 @@ android {
         applicationId "com.elsa.laundry"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+
+        // GitHub Actions supplies the next version automatically.
+        // Local builds use versionCode 1.
+        versionCode (project.findProperty('versionCode') ?: '1').toInteger()
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -31,6 +34,7 @@ android {
 
             if (keystorePropertiesFile.exists()) {
                 def keystoreProperties = new Properties()
+
                 keystoreProperties.load(
                     new FileInputStream(keystorePropertiesFile)
                 )
