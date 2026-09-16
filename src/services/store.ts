@@ -81,6 +81,15 @@ export const DETERGENT_OPTIONS = [
   { id: 'free_clear', name: 'Gentle Silk & Wool Softening Conditioner', description: 'PH-neutral formula preserving delicate fabrics & knitwear.' },
 ];
 
+export const DEFAULT_BUSINESS_SETTINGS = {
+  businessName: 'Elsa Laundry Services',
+  facilityAddress: 'Dennis Pritt Road, Court 4, Kilimani, Nairobi, Kenya',
+  phone: '+254 796 896 239',
+  email: 'Elsierichard76@gmail.com',
+  hours: 'Mon - Sat: 7:00 AM - 8:00 PM | Sun: 9:00 AM - 4:00 PM',
+  deliveryFee: 250,
+};
+
 export const LAUNDRY_OWNER_CONTACT = {
   name: 'Elsie Kaburu',
   phone: '+254 796 896 239',
@@ -112,14 +121,7 @@ class StoreService {
   private notifications: AppNotification[] = [];
   private userLocation: UserLocation = DEFAULT_USER_LOCATION;
   private catalog: LaundryCatalogItem[] = CATALOG_ITEMS;
-  private businessSettings = {
-    businessName: 'Elsa Laundry Services',
-    facilityAddress: 'Dennis Pritt Road, Court 4, Kilimani, Nairobi, Kenya',
-    phone: '+254 796 896 239',
-    email: 'Elsierichard76@gmail.com',
-    hours: 'Mon - Sat: 7:00 AM - 8:00 PM | Sun: 9:00 AM - 4:00 PM',
-    deliveryFee: 250,
-  };
+  private businessSettings = DEFAULT_BUSINESS_SETTINGS;
   private addressUnsubscribe: Unsubscribe | null = null;
   private dataUnsubscribes: Unsubscribe[] = [];
 
@@ -262,6 +264,40 @@ class StoreService {
         ...docSnap.data(),
         id: docSnap.id,
       })) as AppNotification[];
+      this.notify();
+    }, onError));
+
+    attach('Catalog', (onNext, onError) => onSnapshot(collection(db, 'catalog'), async (snapshot) => {
+      if (snapshot.empty) {
+        // First run on this project: seed Firestore with the default catalog.
+        // The seed writes will trigger another snapshot with the real data.
+        try {
+          await Promise.all(
+            CATALOG_ITEMS.map((item) => setDoc(doc(db, 'catalog', item.id), item))
+          );
+        } catch (err) {
+          console.warn('Catalog seed error:', err);
+        }
+        return;
+      }
+      this.catalog = snapshot.docs.map((docSnap: any) => ({
+        ...docSnap.data(),
+        id: docSnap.id,
+      })) as LaundryCatalogItem[];
+      this.notify();
+    }, onError));
+
+    attach('BusinessSettings', (onNext, onError) => onSnapshot(doc(db, 'settings', 'business'), async (snap) => {
+      if (!snap.exists()) {
+        // First run on this project: seed Firestore with the default settings.
+        try {
+          await setDoc(doc(db, 'settings', 'business'), DEFAULT_BUSINESS_SETTINGS);
+        } catch (err) {
+          console.warn('Business settings seed error:', err);
+        }
+        return;
+      }
+      this.businessSettings = { ...DEFAULT_BUSINESS_SETTINGS, ...(snap.data() as Partial<typeof DEFAULT_BUSINESS_SETTINGS>) };
       this.notify();
     }, onError));
   }
@@ -1097,29 +1133,42 @@ class StoreService {
     return this.catalog;
   }
 
-  public updateCatalogItemPrice(id: string, newPrice: number) {
+  public async updateCatalogItemPrice(id: string, newPrice: number) {
     this.catalog = this.catalog.map((item) =>
       item.id === id ? { ...item, unit_price: newPrice } : item
     );
     this.notify();
+    try {
+      await updateDoc(doc(db, 'catalog', id), { unit_price: newPrice });
+    } catch (err) {
+      console.warn('updateCatalogItemPrice Firestore error:', err);
+    }
   }
 
-  public addCatalogItem(newItem: Omit<LaundryCatalogItem, 'id'>) {
-    const item: LaundryCatalogItem = {
-      ...newItem,
-      id: `item-${Date.now()}`,
-    };
+  public async addCatalogItem(newItem: Omit<LaundryCatalogItem, 'id'>) {
+    const id = `item-${Date.now()}`;
+    const item: LaundryCatalogItem = { ...newItem, id };
     this.catalog = [...this.catalog, item];
     this.notify();
+    try {
+      await setDoc(doc(db, 'catalog', id), item);
+    } catch (err) {
+      console.warn('addCatalogItem Firestore error:', err);
+    }
   }
 
   public getBusinessSettings() {
     return this.businessSettings;
   }
 
-  public updateBusinessSettings(updates: Partial<typeof this.businessSettings>) {
+  public async updateBusinessSettings(updates: Partial<typeof DEFAULT_BUSINESS_SETTINGS>) {
     this.businessSettings = { ...this.businessSettings, ...updates };
     this.notify();
+    try {
+      await setDoc(doc(db, 'settings', 'business'), this.businessSettings, { merge: true });
+    } catch (err) {
+      console.warn('updateBusinessSettings Firestore error:', err);
+    }
   }
 }
 
