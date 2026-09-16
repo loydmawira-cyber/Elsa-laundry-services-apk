@@ -15,7 +15,7 @@ import {
   Shield,
   Settings,
 } from 'lucide-react';
-import { User, UserRole, Order, InventoryItem } from './types';
+import { User, UserRole, Order, InventoryItem, LaundryCatalogItem } from './types';
 import { store } from './services/store';
 import { AndroidFrame } from './components/AndroidFrame';
 import { LoginView } from './components/LoginView';
@@ -43,6 +43,8 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>(store.getOrders());
   const [inventory, setInventory] = useState<InventoryItem[]>(store.getInventory());
   const [allUsers, setAllUsers] = useState<User[]>(store.getUsers());
+  const [catalog, setCatalog] = useState<LaundryCatalogItem[]>(store.getCatalog());
+  const [businessSettings, setBusinessSettings] = useState(store.getBusinessSettings());
 
   // Customer Navigation State: 'home' | 'track' | 'history' | 'profile'
   const [customerTab, setCustomerTab] = useState<'home' | 'track' | 'history' | 'profile'>('home');
@@ -65,6 +67,8 @@ export default function App() {
       setOrders(store.getOrders());
       setInventory(store.getInventory());
       setAllUsers(store.getUsers());
+      setCatalog(store.getCatalog());
+      setBusinessSettings(store.getBusinessSettings());
     });
     return () => unsubscribe();
   }, []);
@@ -118,6 +122,7 @@ export default function App() {
             <CustomerHome
               currentUser={currentUser}
               orders={orders}
+              catalog={catalog}
               onOpenSchedule={() => {
                 setReorderItems(undefined);
                 setIsScheduleOpen(true);
@@ -286,7 +291,9 @@ export default function App() {
             <AdminCustomersView users={allUsers} orders={orders} />
           )}
 
-          {adminTab === 'settings' && <AdminSettingsView />}
+          {adminTab === 'settings' && (
+            <AdminSettingsView catalog={catalog} businessSettings={businessSettings} />
+          )}
 
           {/* Admin Bottom Navigation Bar (Fixed to bottom) */}
           <nav
@@ -413,6 +420,7 @@ export default function App() {
           isOpen={isScheduleOpen}
           onClose={() => setIsScheduleOpen(false)}
           currentUser={currentUser}
+          catalog={catalog}
           initialItems={reorderItems}
           onOrderCreated={(orderId) => {
             setTrackOrderId(orderId);
