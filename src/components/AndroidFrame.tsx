@@ -67,9 +67,9 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-start font-sans antialiased">
+    <div className={`min-h-screen ${currentUser ? 'bg-slate-100' : 'bg-slate-950'} flex flex-col items-center justify-start font-sans antialiased transition-colors`}>
       {/* Main Responsive App Container */}
-      <div className="w-full max-w-md min-h-screen bg-slate-50 text-slate-900 relative shadow-lg flex flex-col">
+      <div className={`w-full max-w-md min-h-screen ${currentUser ? 'bg-slate-50 text-slate-900' : 'bg-blue-950 text-white'} relative shadow-2xl flex flex-col`}>
         {/* Push Notification Toast */}
         {activeNotification && currentUser && (
           <div
@@ -159,7 +159,7 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
         {currentUser && <TopLaundryBanner currentUser={currentUser} />}
 
         {/* Main App Content Viewport */}
-        <main className="flex-1 flex flex-col bg-slate-50 relative pb-24">
+        <main className={`flex-1 flex flex-col relative ${currentUser ? 'bg-slate-50 pb-24' : 'bg-blue-950 pb-2'}`}>
           {children}
         </main>
       </div>

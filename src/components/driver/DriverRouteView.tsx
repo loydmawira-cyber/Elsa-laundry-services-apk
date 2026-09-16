@@ -15,6 +15,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { Order, User, OrderStatus } from '../../types';
+import { store } from '../../services/store';
 import { DriverStopDetailModal } from './DriverStopDetailModal';
 
 interface DriverRouteViewProps {
@@ -39,8 +40,6 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
     (o) => o.driver_id === currentUser.id || !o.driver_id
   );
 
-  // Map orders into stops
-  // Scheduled orders are pickups; ready or out_for_delivery are deliveries; picked_up/washing are in-facility
   interface StopItem {
     stopNumber: number;
     order: Order;
@@ -116,6 +115,27 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
 
+  // Launch multi-stop turn-by-turn route in Google Maps
+  const handleLaunchFullRouteMaps = () => {
+    const pendingStops = allStops.filter((s) => !s.completed);
+    if (pendingStops.length === 0) {
+      alert('All stops are completed for today!');
+      return;
+    }
+    const origin = encodeURIComponent('Elsa Laundry Facility, Kilimani, Nairobi');
+    const destination = encodeURIComponent(pendingStops[pendingStops.length - 1].address);
+    const waypoints = pendingStops
+      .slice(0, pendingStops.length - 1)
+      .map((s) => encodeURIComponent(s.address))
+      .join('|');
+
+    let mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+    if (waypoints) {
+      mapsUrl += `&waypoints=${waypoints}`;
+    }
+    window.open(mapsUrl, '_blank');
+  };
+
   const completedCount = allStops.filter((s) => s.completed).length;
   const remainingCount = allStops.length - completedCount;
 
@@ -173,6 +193,7 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
       {/* Filter Tabs (Grouped by Pickup vs Delivery) */}
       <div className="flex bg-slate-200/80 p-1 rounded-2xl text-xs font-bold">
         <button
+          type="button"
           onClick={() => setFilterMode('all')}
           className={`flex-1 py-2 rounded-xl transition-all ${
             filterMode === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
@@ -181,6 +202,7 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
           All Stops ({allStops.length})
         </button>
         <button
+          type="button"
           onClick={() => setFilterMode('pickups')}
           className={`flex-1 py-2 rounded-xl transition-all ${
             filterMode === 'pickups' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600'
@@ -189,6 +211,7 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
           Pickups ({allStops.filter((s) => s.type === 'pickup').length})
         </button>
         <button
+          type="button"
           onClick={() => setFilterMode('deliveries')}
           className={`flex-1 py-2 rounded-xl transition-all ${
             filterMode === 'deliveries' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'
@@ -294,8 +317,51 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
                     className="flex-1 h-11 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
                   >
                     <Navigation className="w-4 h-4 text-blue-600" />
-                    <span>Navigate (Maps)</span>
+                    <span>Navigate</span>
                   </button>
+
+                  {/* Direct Automated Status Transition Action Button */}
+                  {!stop.completed && isPickup && stop.order.status === 'scheduled' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        store.updateOrderStatus(stop.order.id, 'picked_up', 'Picked up by courier');
+                      }}
+                      className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 shadow-sm transition-all"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Mark Picked Up</span>
+                    </button>
+                  )}
+
+                  {!stop.completed && !isPickup && stop.order.status === 'ready' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        store.updateOrderStatus(stop.order.id, 'out_for_delivery', 'Courier started delivery');
+                      }}
+                      className="flex-1 h-11 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 shadow-sm transition-all"
+                    >
+                      <Truck className="w-4 h-4" />
+                      <span>Start Delivery</span>
+                    </button>
+                  )}
+
+                  {!stop.completed && !isPickup && stop.order.status === 'out_for_delivery' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openStopDetail(stop);
+                      }}
+                      className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 shadow-sm transition-all"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Mark Delivered</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -303,15 +369,10 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
                       e.stopPropagation();
                       openStopDetail(stop);
                     }}
-                    className={`flex-1 h-11 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 shadow-xs transition-all ${
-                      stop.completed
-                        ? 'bg-slate-600 hover:bg-slate-700'
-                        : isPickup
-                        ? 'bg-blue-600 hover:bg-blue-700'
-                        : 'bg-emerald-600 hover:bg-emerald-700'
-                    }`}
+                    className="h-11 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
+                    title="View details or add proof photo"
                   >
-                    <span>{stop.completed ? 'View Proof' : 'Open Stop'}</span>
+                    <span>{stop.completed ? 'View Proof' : 'Details'}</span>
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>

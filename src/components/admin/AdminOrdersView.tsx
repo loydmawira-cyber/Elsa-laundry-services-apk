@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -34,6 +34,16 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(
     orders.find((o) => o.id === initialSelectedOrderId) || null
   );
+
+  // Keep selectedOrder in sync with real-time updates to orders prop
+  useEffect(() => {
+    if (selectedOrder) {
+      const updated = orders.find((o) => o.id === selectedOrder.id);
+      if (updated) {
+        setSelectedOrder(updated);
+      }
+    }
+  }, [orders]);
 
   const drivers = users.filter((u) => u.role === 'driver');
 
@@ -220,35 +230,82 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                 </p>
               </div>
 
-              {/* STATUS OVERRIDE */}
+              {/* STATUS OVERRIDE - ALL STATUSES VISIBLE, AUTOMATED ONES UNCLICKABLE */}
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                <label className="font-bold text-slate-800">Operational Status</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {(
-                    [
-                      'scheduled',
-                      'picked_up',
-                      'at_facility',
-                      'washing',
-                      'ready',
-                      'out_for_delivery',
-                      'delivered',
-                    ] as OrderStatus[]
-                  ).map((st) => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => handleUpdateStatus(selectedOrder.id, st)}
-                      className={`py-2 px-1 rounded-xl text-[10px] font-bold capitalize border text-center transition-all ${
-                        selectedOrder.status === st
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-                      }`}
-                    >
-                      {st === 'at_facility' ? 'At Facility (Queued)' : st.replace('_', ' ')}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800">Operational Status</label>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 capitalize flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                    Current: {selectedOrder.status.replace('_', ' ')}
+                  </span>
                 </div>
+
+                <p className="text-[11px] text-slate-500">
+                  Manual updates are enabled for facility steps (<span className="font-semibold text-slate-700">At Facility, Washing, Ready</span>). Pickup and delivery status buttons are automated via driver actions.
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
+                  {[
+                    { key: 'scheduled', label: 'Scheduled', isManual: false },
+                    { key: 'picked_up', label: 'Picked Up', isManual: false },
+                    { key: 'at_facility', label: 'At Facility', isManual: true },
+                    { key: 'washing', label: 'Washing', isManual: true },
+                    { key: 'ready', label: 'Ready', isManual: true },
+                    { key: 'out_for_delivery', label: 'Out For Delivery', isManual: false },
+                    { key: 'delivered', label: 'Delivered', isManual: false },
+                  ].map((st) => {
+                    const isCurrent = selectedOrder.status === st.key;
+                    if (st.isManual) {
+                      return (
+                        <button
+                          key={st.key}
+                          type="button"
+                          onClick={() => handleUpdateStatus(selectedOrder.id, st.key as OrderStatus)}
+                          className={`py-2 px-1.5 rounded-xl text-[11px] font-bold capitalize border text-center transition-all ${
+                            isCurrent
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-300'
+                              : 'bg-white text-slate-800 border-slate-300 hover:bg-slate-100 hover:border-blue-400'
+                          }`}
+                        >
+                          {st.label}
+                        </button>
+                      );
+                    }
+
+                    // Automated status - visible but unclickable (disabled)
+                    return (
+                      <button
+                        key={st.key}
+                        type="button"
+                        disabled
+                        title="Automated status (managed by Driver App actions)"
+                        className={`py-2 px-1.5 rounded-xl text-[11px] font-bold capitalize border text-center transition-all cursor-not-allowed ${
+                          isCurrent
+                            ? 'bg-blue-600 text-white border-blue-700 font-extrabold shadow-sm ring-2 ring-blue-300'
+                            : 'bg-slate-100 text-slate-400 border-slate-200 opacity-70'
+                        }`}
+                      >
+                        <span className="flex items-center justify-center gap-1">
+                          <span>{st.label}</span>
+                          <span className="text-[9px] text-slate-400 font-normal uppercase tracking-wider">(Auto)</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Automated Status Notice if currently in an automated driver phase */}
+                {['scheduled', 'picked_up', 'out_for_delivery', 'delivered'].includes(selectedOrder.status) && (
+                  <div className="mt-2 p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl text-[11px] text-blue-900 font-medium flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>
+                      {selectedOrder.status === 'scheduled' && 'Automated: Pending driver pickup. Will auto-update to "Picked Up" when collected by driver.'}
+                      {selectedOrder.status === 'picked_up' && 'Automated: Item picked up by driver. Click "At Facility" when garments arrive.'}
+                      {selectedOrder.status === 'out_for_delivery' && 'Automated: Driver is currently en route delivering garments to customer.'}
+                      {selectedOrder.status === 'delivered' && 'Automated: Order has been successfully delivered by driver.'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Customer Details */}

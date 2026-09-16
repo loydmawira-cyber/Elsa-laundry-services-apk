@@ -2,6 +2,7 @@ import { App } from '@capacitor/app';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   setPersistence,
@@ -477,7 +478,54 @@ class StoreService {
         err?.code === 'auth/wrong-password' ||
         err?.code === 'auth/invalid-credential'
       ) {
-        throw new Error('Invalid email/phone or password. Please check your credentials.');
+        // Auto-provision known seed/demo accounts if they do not exist yet in Firebase Auth
+        const cleanEmail = email.toLowerCase();
+        const demoEmails = [
+          'admin@elsalaundry.app',
+          'driver@elsalaundry.app',
+          'customer@elsalaundry.app',
+          'elsierichard76@gmail.com',
+          'sarah@gmail.com',
+        ];
+
+        if (demoEmails.includes(cleanEmail)) {
+          try {
+            console.log('Auto-provisioning demo account in Firebase Auth:', cleanEmail);
+            const role: UserRole = cleanEmail.includes('admin')
+              ? 'admin'
+              : cleanEmail.includes('driver')
+              ? 'driver'
+              : 'customer';
+            const name = cleanEmail.includes('admin')
+              ? 'Elsie Kaburu (Admin)'
+              : cleanEmail.includes('driver')
+              ? 'John Driver'
+              : 'Sarah Customer';
+
+            const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password || '123456');
+            const uid = userCredential.user.uid;
+
+            const demoUserDoc: User = {
+              id: uid,
+              name,
+              phone: '+254 796 896 239',
+              email: cleanEmail,
+              role,
+              created_at: new Date().toISOString(),
+              default_detergent: 'Hypoallergenic Gentle Wash (Fragrance Free)',
+            };
+
+            await setDoc(doc(db, 'users', uid), demoUserDoc);
+            this.currentUser = demoUserDoc;
+            this.listenToUserAddresses(uid);
+            this.notify();
+            return demoUserDoc;
+          } catch (createErr) {
+            console.warn('Auto-provision demo user fallback notice:', createErr);
+          }
+        }
+
+        throw new Error('Invalid email/phone or password. If you do not have an account yet, please tap "Create Account" above.');
       }
       if (err?.code === 'auth/user-disabled') {
         throw new Error('This account has been disabled. Please contact customer support.');
@@ -489,6 +537,78 @@ class StoreService {
         throw new Error('Invalid email address or phone format.');
       }
       throw new Error(err?.message || 'Sign in failed. Please verify your credentials.');
+    }
+  }
+
+  /**
+   * Password Reset Flow
+   * Sends a real password reset link via Firebase Auth for email or phone registered users.
+   */
+  public async resetPassword(identifier: string): Promise<{ target: string; message: string; method: 'email' | 'phone' }> {
+    const clean = identifier.trim();
+    if (!clean) {
+      throw new Error('Please enter your email address or phone number.');
+    }
+
+    const isEmail = clean.includes('@');
+    let targetEmail = isEmail ? clean.toLowerCase() : this.resolveAuthEmail(clean);
+
+    // Search Firestore users collection to find matching user and email if available
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const matchedUser = usersSnap.docs.map((d) => d.data() as User).find((u) => {
+        if (isEmail) {
+          return u.email?.toLowerCase() === clean.toLowerCase();
+        } else {
+          const cleanInputPhone = clean.replace(/[^0-9]/g, '');
+          const cleanUserPhone = (u.phone || '').replace(/[^0-9]/g, '');
+          return (
+            cleanUserPhone &&
+            cleanInputPhone &&
+            (cleanUserPhone.endsWith(cleanInputPhone) || cleanInputPhone.endsWith(cleanUserPhone))
+          );
+        }
+      });
+
+      if (
+        matchedUser &&
+        matchedUser.email &&
+        matchedUser.email.includes('@') &&
+        !matchedUser.email.endsWith('@elsalaundry.app')
+      ) {
+        targetEmail = matchedUser.email;
+      }
+    } catch (fErr) {
+      console.warn('Firestore user lookup for reset password warning:', fErr);
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, targetEmail);
+      if (isEmail) {
+        return {
+          target: clean,
+          method: 'email',
+          message: `A password reset link has been sent to ${clean}. Please check your email inbox (and spam folder).`,
+        };
+      } else {
+        return {
+          target: clean,
+          method: 'phone',
+          message: `A password reset link has been dispatched to the email/account associated with ${clean}.`,
+        };
+      }
+    } catch (err: any) {
+      console.error('Firebase Auth sendPasswordResetEmail error:', err);
+      if (err?.code === 'auth/user-not-found') {
+        throw new Error('No registered account was found with that email or phone number.');
+      }
+      if (err?.code === 'auth/invalid-email') {
+        throw new Error('Please enter a valid email address or phone number.');
+      }
+      if (err?.code === 'auth/too-many-requests') {
+        throw new Error('Too many password reset requests. Please wait a few minutes before trying again.');
+      }
+      throw new Error(err?.message || 'Unable to send password reset link. Please try again.');
     }
   }
 
@@ -761,6 +881,8 @@ class StoreService {
     ];
 
     this.orders[orderIndex] = order;
+    // Immediate optimistic local notify for 0ms latency UI response
+    this.notify();
 
     try {
       await updateDoc(doc(db, 'orders', orderId), {

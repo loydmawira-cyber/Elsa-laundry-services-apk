@@ -64,7 +64,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </span>
           <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Admin Dashboard</h2>
           <p className="text-[11px] text-slate-500">
-            Owner: <span className="font-bold text-slate-800">Elsie Kaburu</span> • Elsierichard76@gmail.com
+            <span className="font-bold text-slate-800">Elsie Kaburu</span> • Elsierichard76@gmail.com
           </p>
         </div>
         <div className="flex items-center gap-2">

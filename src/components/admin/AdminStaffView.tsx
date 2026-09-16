@@ -85,7 +85,7 @@ export const AdminStaffView: React.FC<AdminStaffViewProps> = ({ users, orders })
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Staff & Leadership</h2>
-          <p className="text-xs text-slate-500">Owner, administrative team, & courier fleet</p>
+          <p className="text-xs text-slate-500">Administrative team & courier fleet</p>
         </div>
 
         <button

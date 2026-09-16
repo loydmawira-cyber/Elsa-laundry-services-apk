@@ -73,20 +73,18 @@ export const DriverStopDetailModal: React.FC<DriverStopDetailModalProps> = ({
 
   const handleCompleteStop = () => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      let nextStatus: OrderStatus;
-      if (isPickup) {
-        nextStatus = 'picked_up';
-      } else if (order.status === 'ready') {
-        nextStatus = 'out_for_delivery';
-      } else {
-        nextStatus = 'delivered';
-      }
-      store.updateOrderStatus(order.id, nextStatus, driverNotes, photoUrl || undefined);
-      setIsSubmitting(false);
-      onStopCompleted();
-      onClose();
-    }, 400);
+    let nextStatus: OrderStatus;
+    if (isPickup) {
+      nextStatus = 'picked_up';
+    } else if (order.status === 'ready') {
+      nextStatus = 'out_for_delivery';
+    } else {
+      nextStatus = 'delivered';
+    }
+    store.updateOrderStatus(order.id, nextStatus, driverNotes, photoUrl || undefined);
+    setIsSubmitting(false);
+    onStopCompleted();
+    onClose();
   };
 
   const handleOpenGoogleMaps = () => {
