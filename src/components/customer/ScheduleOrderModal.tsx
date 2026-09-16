@@ -20,13 +20,14 @@ import {
   ArrowRight,
   Info,
 } from 'lucide-react';
-import { store, CATALOG_ITEMS, DETERGENT_OPTIONS } from '../../services/store';
-import { User, OrderItem, PaymentMethod } from '../../types';
+import { store, DETERGENT_OPTIONS } from '../../services/store';
+import { User, OrderItem, PaymentMethod, LaundryCatalogItem } from '../../types';
 
 interface ScheduleOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: User;
+  catalog: LaundryCatalogItem[];
   onOrderCreated: (orderId: string) => void;
   initialItems?: { item_type: string; quantity: number; care_notes: string; price: number }[];
 }
@@ -35,6 +36,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
   isOpen,
   onClose,
   currentUser,
+  catalog,
   onOrderCreated,
   initialItems,
 }) => {
@@ -212,7 +214,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
               </div>
 
               <div className="space-y-2.5">
-                {CATALOG_ITEMS.map((item) => {
+                {catalog.map((item) => {
                   const currentSelected = selectedItems.find((i) => i.item_type === item.name);
                   const qty = currentSelected ? currentSelected.quantity : 0;
 
