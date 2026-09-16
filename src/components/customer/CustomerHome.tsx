@@ -16,12 +16,12 @@ import {
   Phone,
 } from 'lucide-react';
 import { ElsaLogo } from '../ElsaLogo';
-import { User, Order } from '../../types';
-import { CATALOG_ITEMS } from '../../services/store';
+import { User, Order, LaundryCatalogItem } from '../../types';
 
 interface CustomerHomeProps {
   currentUser: User;
   orders: Order[];
+  catalog: LaundryCatalogItem[];
   onOpenSchedule: () => void;
   onNavigateToTrack: (orderId?: string) => void;
   onReorder: (order: Order) => void;
@@ -30,6 +30,7 @@ interface CustomerHomeProps {
 export const CustomerHome: React.FC<CustomerHomeProps> = ({
   currentUser,
   orders,
+  catalog,
   onOpenSchedule,
   onNavigateToTrack,
   onReorder,
@@ -154,7 +155,7 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
-          {CATALOG_ITEMS.slice(0, 4).map((item) => (
+          {catalog.slice(0, 4).map((item) => (
             <div
               key={item.id}
               onClick={onOpenSchedule}
