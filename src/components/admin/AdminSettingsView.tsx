@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Tag,
   MapPin,
@@ -14,12 +14,15 @@ import {
   Sparkles,
   Building,
 } from 'lucide-react';
-import { store } from '../../services/store';
+import { store, DEFAULT_BUSINESS_SETTINGS } from '../../services/store';
 import { LaundryCatalogItem } from '../../types';
 
-export const AdminSettingsView: React.FC = () => {
-  const [catalog, setCatalog] = useState<LaundryCatalogItem[]>(store.getCatalog());
-  const [business, setBusiness] = useState(store.getBusinessSettings());
+interface AdminSettingsViewProps {
+  catalog: LaundryCatalogItem[];
+  businessSettings: typeof DEFAULT_BUSINESS_SETTINGS;
+}
+
+export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, businessSettings: business }) => {
 
   // Editing state for pricing
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
@@ -40,6 +43,17 @@ export const AdminSettingsView: React.FC = () => {
   const [deliveryFee, setDeliveryFee] = useState(business.deliveryFee);
   const [isSavedNotice, setIsSavedNotice] = useState(false);
 
+  // Keep the location/contact form in sync if business settings change
+  // elsewhere (e.g. another admin session, or the initial Firestore load
+  // arriving after the local defaults were used for the first render).
+  useEffect(() => {
+    setFacilityAddress(business.facilityAddress);
+    setBusinessPhone(business.phone);
+    setBusinessEmail(business.email);
+    setOperatingHours(business.hours);
+    setDeliveryFee(business.deliveryFee);
+  }, [business]);
+
   const handleStartEditPrice = (item: LaundryCatalogItem) => {
     setEditingPriceId(item.id);
     setTempPrice(item.unit_price);
@@ -47,7 +61,6 @@ export const AdminSettingsView: React.FC = () => {
 
   const handleSavePrice = (id: string) => {
     store.updateCatalogItemPrice(id, tempPrice);
-    setCatalog(store.getCatalog());
     setEditingPriceId(null);
   };
 
@@ -64,7 +77,6 @@ export const AdminSettingsView: React.FC = () => {
       popular: false,
     });
 
-    setCatalog(store.getCatalog());
     setNewName('');
     setShowAddItemModal(false);
   };
@@ -78,7 +90,6 @@ export const AdminSettingsView: React.FC = () => {
       hours: operatingHours,
       deliveryFee: Number(deliveryFee),
     });
-    setBusiness(store.getBusinessSettings());
     setIsSavedNotice(true);
     setTimeout(() => setIsSavedNotice(false), 3000);
   };
