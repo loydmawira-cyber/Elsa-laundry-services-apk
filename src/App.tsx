@@ -13,6 +13,7 @@ import {
   Sparkles,
   Plus,
   Shield,
+  Settings,
 } from 'lucide-react';
 import { User, UserRole, Order, InventoryItem } from './types';
 import { store } from './services/store';
@@ -35,6 +36,7 @@ import { AdminOrdersView } from './components/admin/AdminOrdersView';
 import { AdminInventoryView } from './components/admin/AdminInventoryView';
 import { AdminStaffView } from './components/admin/AdminStaffView';
 import { AdminCustomersView } from './components/admin/AdminCustomersView';
+import { AdminSettingsView } from './components/admin/AdminSettingsView';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(store.getCurrentUser());
@@ -50,9 +52,9 @@ export default function App() {
     { item_type: string; quantity: number; care_notes: string; price: number }[] | undefined
   >();
 
-  // Admin Navigation State: 'dashboard' | 'orders' | 'inventory' | 'staff' | 'customers'
+  // Admin Navigation State: 'dashboard' | 'orders' | 'inventory' | 'staff' | 'customers' | 'settings'
   const [adminTab, setAdminTab] = useState<
-    'dashboard' | 'orders' | 'inventory' | 'staff' | 'customers'
+    'dashboard' | 'orders' | 'inventory' | 'staff' | 'customers' | 'settings'
   >('dashboard');
   const [adminSelectedOrderId, setAdminSelectedOrderId] = useState<string | null>(null);
 
@@ -284,27 +286,29 @@ export default function App() {
             <AdminCustomersView users={allUsers} orders={orders} />
           )}
 
+          {adminTab === 'settings' && <AdminSettingsView />}
+
           {/* Admin Bottom Navigation Bar (Fixed to bottom) */}
           <nav
             id="admin-bottom-nav"
-            className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-2 flex items-center justify-around z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
+            className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-1 flex items-center justify-around z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
           >
             <button
               onClick={() => setAdminTab('dashboard')}
-              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+              className={`flex flex-col items-center gap-0.5 py-1 px-1.5 rounded-xl transition-all ${
                 adminTab === 'dashboard'
                   ? 'text-emerald-700 font-extrabold'
                   : 'text-slate-500 font-medium hover:text-slate-800'
               }`}
             >
               <div
-                className={`w-9 h-5 rounded-full flex items-center justify-center ${
+                className={`w-8 h-5 rounded-full flex items-center justify-center ${
                   adminTab === 'dashboard' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-500'
                 }`}
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[10px]">Dashboard</span>
+              <span className="text-[9px]">Dashboard</span>
             </button>
 
             <button
@@ -312,74 +316,92 @@ export default function App() {
                 setAdminSelectedOrderId(null);
                 setAdminTab('orders');
               }}
-              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+              className={`flex flex-col items-center gap-0.5 py-1 px-1.5 rounded-xl transition-all ${
                 adminTab === 'orders'
                   ? 'text-emerald-700 font-extrabold'
                   : 'text-slate-500 font-medium hover:text-slate-800'
               }`}
             >
               <div
-                className={`w-9 h-5 rounded-full flex items-center justify-center ${
+                className={`w-8 h-5 rounded-full flex items-center justify-center ${
                   adminTab === 'orders' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-500'
                 }`}
               >
                 <Package className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[10px]">Orders</span>
+              <span className="text-[9px]">Orders</span>
             </button>
 
             <button
               onClick={() => setAdminTab('inventory')}
-              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+              className={`flex flex-col items-center gap-0.5 py-1 px-1.5 rounded-xl transition-all ${
                 adminTab === 'inventory'
                   ? 'text-emerald-700 font-extrabold'
                   : 'text-slate-500 font-medium hover:text-slate-800'
               }`}
             >
               <div
-                className={`w-9 h-5 rounded-full flex items-center justify-center ${
+                className={`w-8 h-5 rounded-full flex items-center justify-center ${
                   adminTab === 'inventory' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-500'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[10px]">Inventory</span>
+              <span className="text-[9px]">Stock</span>
             </button>
 
             <button
               onClick={() => setAdminTab('staff')}
-              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+              className={`flex flex-col items-center gap-0.5 py-1 px-1.5 rounded-xl transition-all ${
                 adminTab === 'staff'
                   ? 'text-emerald-700 font-extrabold'
                   : 'text-slate-500 font-medium hover:text-slate-800'
               }`}
             >
               <div
-                className={`w-9 h-5 rounded-full flex items-center justify-center ${
+                className={`w-8 h-5 rounded-full flex items-center justify-center ${
                   adminTab === 'staff' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-500'
                 }`}
               >
                 <Truck className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[10px]">Drivers</span>
+              <span className="text-[9px]">Drivers</span>
             </button>
 
             <button
               onClick={() => setAdminTab('customers')}
-              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+              className={`flex flex-col items-center gap-0.5 py-1 px-1.5 rounded-xl transition-all ${
                 adminTab === 'customers'
                   ? 'text-emerald-700 font-extrabold'
                   : 'text-slate-500 font-medium hover:text-slate-800'
               }`}
             >
               <div
-                className={`w-9 h-5 rounded-full flex items-center justify-center ${
+                className={`w-8 h-5 rounded-full flex items-center justify-center ${
                   adminTab === 'customers' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-500'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[10px]">Customers</span>
+              <span className="text-[9px]">Clients</span>
+            </button>
+
+            <button
+              onClick={() => setAdminTab('settings')}
+              className={`flex flex-col items-center gap-0.5 py-1 px-1.5 rounded-xl transition-all ${
+                adminTab === 'settings'
+                  ? 'text-emerald-700 font-extrabold'
+                  : 'text-slate-500 font-medium hover:text-slate-800'
+              }`}
+            >
+              <div
+                className={`w-8 h-5 rounded-full flex items-center justify-center ${
+                  adminTab === 'settings' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-500'
+                }`}
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-[9px]">Settings</span>
             </button>
           </nav>
         </div>

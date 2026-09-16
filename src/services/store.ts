@@ -111,6 +111,15 @@ class StoreService {
   private addresses: Map<string, Address[]> = new Map();
   private notifications: AppNotification[] = [];
   private userLocation: UserLocation = DEFAULT_USER_LOCATION;
+  private catalog: LaundryCatalogItem[] = CATALOG_ITEMS;
+  private businessSettings = {
+    businessName: 'Elsa Laundry Services',
+    facilityAddress: 'Dennis Pritt Road, Court 4, Kilimani, Nairobi, Kenya',
+    phone: '+254 796 896 239',
+    email: 'Elsierichard76@gmail.com',
+    hours: 'Mon - Sat: 7:00 AM - 8:00 PM | Sun: 9:00 AM - 4:00 PM',
+    deliveryFee: 250,
+  };
   private addressUnsubscribe: Unsubscribe | null = null;
   private dataUnsubscribes: Unsubscribe[] = [];
 
@@ -1078,6 +1087,38 @@ class StoreService {
 
   public setLocation(location: UserLocation) {
     this.userLocation = location;
+    this.notify();
+  }
+
+  // =========================================================================
+  // 7. CATALOG PRICING & BUSINESS SETTINGS
+  // =========================================================================
+  public getCatalog(): LaundryCatalogItem[] {
+    return this.catalog;
+  }
+
+  public updateCatalogItemPrice(id: string, newPrice: number) {
+    this.catalog = this.catalog.map((item) =>
+      item.id === id ? { ...item, unit_price: newPrice } : item
+    );
+    this.notify();
+  }
+
+  public addCatalogItem(newItem: Omit<LaundryCatalogItem, 'id'>) {
+    const item: LaundryCatalogItem = {
+      ...newItem,
+      id: `item-${Date.now()}`,
+    };
+    this.catalog = [...this.catalog, item];
+    this.notify();
+  }
+
+  public getBusinessSettings() {
+    return this.businessSettings;
+  }
+
+  public updateBusinessSettings(updates: Partial<typeof this.businessSettings>) {
+    this.businessSettings = { ...this.businessSettings, ...updates };
     this.notify();
   }
 }
