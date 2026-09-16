@@ -21,6 +21,8 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
+  or,
   Unsubscribe,
 } from 'firebase/firestore';
 import { auth, db, getStaffCreationAuth } from './firebase';
@@ -233,7 +235,20 @@ class StoreService {
       }
     };
 
-    attach('Orders', (onNext, onError) => onSnapshot(collection(db, 'orders'), (snapshot) => {
+    // Orders: the security rules only allow a customer/driver to READ docs
+    // where customer_id/driver_id matches their own uid, and Firestore denies
+    // an entire `list` query unless it's narrowed to match that — so we must
+    // filter the query itself per role rather than fetching the whole collection.
+    const role = this.currentUser?.role;
+    const uid = auth.currentUser.uid;
+    const ordersQuery =
+      role === 'admin'
+        ? collection(db, 'orders')
+        : role === 'driver'
+        ? query(collection(db, 'orders'), where('driver_id', '==', uid))
+        : query(collection(db, 'orders'), where('customer_id', '==', uid));
+
+    attach('Orders', (onNext, onError) => onSnapshot(ordersQuery, (snapshot) => {
       const list: Order[] = snapshot.docs.map((docSnap: any) => ({
         ...docSnap.data(),
         id: docSnap.id,
@@ -243,23 +258,37 @@ class StoreService {
       this.notify();
     }, onError));
 
-    attach('Inventory', (onNext, onError) => onSnapshot(collection(db, 'inventory'), (snapshot) => {
-      this.inventory = snapshot.docs.map((docSnap: any) => ({
-        ...docSnap.data(),
-        id: docSnap.id,
-      })) as InventoryItem[];
-      this.notify();
-    }, onError));
+    // Inventory is admin-only in the rules (no other role's UI needs it).
+    if (role === 'admin') {
+      attach('Inventory', (onNext, onError) => onSnapshot(collection(db, 'inventory'), (snapshot) => {
+        this.inventory = snapshot.docs.map((docSnap: any) => ({
+          ...docSnap.data(),
+          id: docSnap.id,
+        })) as InventoryItem[];
+        this.notify();
+      }, onError));
 
-    attach('Users', (onNext, onError) => onSnapshot(collection(db, 'users'), (snapshot) => {
-      this.users = snapshot.docs.map((docSnap: any) => ({
-        ...docSnap.data(),
-        id: docSnap.id,
-      })) as User[];
-      this.notify();
-    }, onError));
+      // Full users directory is admin-only in the rules (only Admin* views use it).
+      attach('Users', (onNext, onError) => onSnapshot(collection(db, 'users'), (snapshot) => {
+        this.users = snapshot.docs.map((docSnap: any) => ({
+          ...docSnap.data(),
+          id: docSnap.id,
+        })) as User[];
+        this.notify();
+      }, onError));
+    }
 
-    attach('Notifications', (onNext, onError) => onSnapshot(collection(db, 'notifications'), (snapshot) => {
+    // Notifications: same list-query constraint as orders — the query must
+    // itself be narrowed to what the rules allow the current user to read.
+    const notificationsQuery =
+      role === 'admin'
+        ? collection(db, 'notifications')
+        : query(
+            collection(db, 'notifications'),
+            or(where('target_role', '==', role), where('user_id', '==', uid))
+          );
+
+    attach('Notifications', (onNext, onError) => onSnapshot(notificationsQuery, (snapshot) => {
       this.notifications = snapshot.docs.map((docSnap: any) => ({
         ...docSnap.data(),
         id: docSnap.id,
@@ -1098,7 +1127,13 @@ class StoreService {
     });
 
     try {
-      const q = collection(db, 'notifications');
+      const q =
+        user?.role === 'admin'
+          ? collection(db, 'notifications')
+          : query(
+              collection(db, 'notifications'),
+              or(where('target_role', '==', user?.role), where('user_id', '==', user?.id))
+            );
       const snaps = await getDocs(q);
       snaps.forEach(async (d) => {
         const data = d.data() as AppNotification;
