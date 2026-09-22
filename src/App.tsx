@@ -19,6 +19,7 @@ import { User, UserRole, Order, InventoryItem, LaundryCatalogItem } from './type
 import { store } from './services/store';
 import { AndroidFrame } from './components/AndroidFrame';
 import { LoginView } from './components/LoginView';
+import { PinUnlockView } from './components/PinSecurity';
 
 // Customer Components
 import { CustomerHome } from './components/customer/CustomerHome';
@@ -45,6 +46,7 @@ export default function App() {
   const [allUsers, setAllUsers] = useState<User[]>(store.getUsers());
   const [catalog, setCatalog] = useState<LaundryCatalogItem[]>(store.getCatalog());
   const [businessSettings, setBusinessSettings] = useState(store.getBusinessSettings());
+  const [pinUnlocked, setPinUnlocked] = useState(false);
 
   // Customer Navigation State: 'home' | 'track' | 'history' | 'profile'
   const [customerTab, setCustomerTab] = useState<'home' | 'track' | 'history' | 'profile'>('home');
@@ -75,6 +77,7 @@ export default function App() {
 
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
+    setPinUnlocked(true);
     if (user.role === 'customer') setCustomerTab('home');
     if (user.role === 'admin') setAdminTab('dashboard');
   };
@@ -82,7 +85,10 @@ export default function App() {
   const handleLogout = () => {
     store.logout();
     setCurrentUser(null);
+    setPinUnlocked(false);
   };
+
+  const isPinLocked = Boolean(currentUser && store.hasPin(currentUser) && !pinUnlocked);
 
   const handleReorder = (order: Order) => {
     setReorderItems(
@@ -113,10 +119,18 @@ export default function App() {
         <LoginView onLoginSuccess={handleLoginSuccess} businessSettings={businessSettings} />
       )}
 
+      {currentUser && isPinLocked && (
+        <PinUnlockView
+          user={currentUser}
+          onUnlocked={() => setPinUnlocked(true)}
+          onUsePassword={handleLogout}
+        />
+      )}
+
       {/* ------------------------------------------------------------- */}
       {/* 1. CUSTOMER ROLE SCREENS                                     */}
       {/* ------------------------------------------------------------- */}
-      {currentUser && currentUser.role === 'customer' && (
+      {currentUser && !isPinLocked && currentUser.role === 'customer' && (
         <div className="flex-1 flex flex-col h-full relative">
           {customerTab === 'home' && (
             <CustomerHome
@@ -249,7 +263,7 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* 2. DRIVER ROLE SCREENS                                       */}
       {/* ------------------------------------------------------------- */}
-      {currentUser && currentUser.role === 'driver' && (
+      {currentUser && !isPinLocked && currentUser.role === 'driver' && (
         <div className="flex-1 flex flex-col h-full">
           <DriverRouteView
             currentUser={currentUser}
@@ -262,7 +276,7 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* 3. ADMIN ROLE SCREENS                                        */}
       {/* ------------------------------------------------------------- */}
-      {currentUser && currentUser.role === 'admin' && (
+      {currentUser && !isPinLocked && currentUser.role === 'admin' && (
         <div className="flex-1 flex flex-col h-full relative">
           {adminTab === 'dashboard' && (
             <AdminDashboardView
@@ -295,7 +309,7 @@ export default function App() {
           )}
 
           {adminTab === 'settings' && (
-            <AdminSettingsView catalog={catalog} businessSettings={businessSettings} />
+            <AdminSettingsView catalog={catalog} businessSettings={businessSettings} currentUser={currentUser} />
           )}
 
           {/* Admin Bottom Navigation Bar (Fixed to bottom) */}
