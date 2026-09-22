@@ -66,3 +66,45 @@
 .theme-dark .bg-gradient-to-r.from-blue-900,
 .theme-dark .bg-gradient-to-r.from-blue-950,
 .theme-dark .bg-gradient-to-br.from-blue-600 { background-image: linear-gradient(135deg, #0B0F1A, #18253a) !important; }
+
+/* Customer dark-theme coverage: status cards, pricing panels, forms, and navigation */
+.theme-dark #customer-bottom-nav,
+.theme-dark .bg-white\/90,
+.theme-dark .bg-white\/95 { background-color: #111827 !important; }
+.theme-dark .bg-slate-200 { background-color: #263244 !important; }
+.theme-dark .bg-blue-100 { background-color: #26384f !important; }
+.theme-dark .bg-blue-900 { background-color: #101b2d !important; }
+.theme-dark .bg-indigo-50 { background-color: #20243d !important; }
+.theme-dark .bg-purple-100 { background-color: #302448 !important; }
+.theme-dark .bg-amber-50 { background-color: #352b1b !important; }
+.theme-dark .bg-amber-100 { background-color: #4a3718 !important; }
+.theme-dark .bg-amber-400,
+.theme-dark .bg-amber-500 { background-color: var(--accent-gold) !important; }
+.theme-dark .bg-red-50 { background-color: #351827 !important; }
+.theme-dark .border-indigo-200 { border-color: #514b86 !important; }
+.theme-dark .border-amber-200,
+.theme-dark .border-amber-300 { border-color: #765522 !important; }
+.theme-dark .border-emerald-200 { border-color: #23694f !important; }
+.theme-dark .text-blue-950,
+.theme-dark .text-indigo-950,
+.theme-dark .text-amber-950 { color: #f8fafc !important; }
+.theme-dark .text-blue-900,
+.theme-dark .text-blue-800,
+.theme-dark .text-indigo-800,
+.theme-dark .text-amber-900,
+.theme-dark .text-amber-800 { color: #f4c56f !important; }
+.theme-dark .text-blue-100,
+.theme-dark .text-blue-200 { color: #b8c7da !important; }
+.theme-dark .text-indigo-700,
+.theme-dark .text-purple-800 { color: #c7bcff !important; }
+.theme-dark .text-amber-600,
+.theme-dark .text-amber-700 { color: var(--accent-gold) !important; }
+.theme-dark .text-emerald-900 { color: #b7f5d8 !important; }
+.theme-dark .ring-blue-100,
+.theme-dark .ring-blue-300,
+.theme-dark .ring-emerald-100 { --tw-ring-color: #765522 !important; }
+.theme-dark .hover\:bg-slate-100:hover,
+.theme-dark .hover\:bg-slate-200:hover { background-color: #263244 !important; }
+.theme-dark .hover\:bg-blue-100:hover { background-color: #26384f !important; }
+.theme-dark .placeholder\:text-slate-400::placeholder { color: #94A3B8 !important; }
+.theme-dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #263244 !important; }
