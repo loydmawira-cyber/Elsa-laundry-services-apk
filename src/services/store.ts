@@ -900,13 +900,23 @@ class StoreService {
       ],
     };
 
+    // Firestore rejects undefined property values. Keep optional payment and
+    // driver fields out of the write when they are not available yet.
+    const firestoreOrder = Object.fromEntries(
+      Object.entries(newOrder).filter(([, value]) => value !== undefined)
+    ) as Order;
+
     // Optimistic local update
     this.orders = [newOrder, ...this.orders];
 
     try {
-      await setDoc(doc(db, 'orders', orderId), newOrder);
+      await setDoc(doc(db, 'orders', orderId), firestoreOrder);
     } catch (err) {
-      console.warn('createOrder Firestore error:', err);
+      console.error('createOrder Firestore error:', err);
+      // Do not leave a misleading local-only order that disappears on logout.
+      this.orders = this.orders.filter((order) => order.id !== orderId);
+      this.notify();
+      throw err;
     }
 
     // Notifications
