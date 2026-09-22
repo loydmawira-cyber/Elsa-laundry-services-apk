@@ -47,6 +47,7 @@ export default function App() {
   const [catalog, setCatalog] = useState<LaundryCatalogItem[]>(store.getCatalog());
   const [businessSettings, setBusinessSettings] = useState(store.getBusinessSettings());
   const [pinUnlocked, setPinUnlocked] = useState(false);
+  const [darkTheme, setDarkTheme] = useState(() => localStorage.getItem('elsa-theme') === 'dark');
 
   // Customer Navigation State: 'home' | 'track' | 'history' | 'profile'
   const [customerTab, setCustomerTab] = useState<'home' | 'track' | 'history' | 'profile'>('home');
@@ -90,6 +91,14 @@ export default function App() {
 
   const isPinLocked = Boolean(currentUser && store.hasPin(currentUser) && !pinUnlocked);
 
+  const handleThemeToggle = () => {
+    setDarkTheme((current) => {
+      const next = !current;
+      localStorage.setItem('elsa-theme', next ? 'dark' : 'light');
+      return next;
+    });
+  };
+
   const handleReorder = (order: Order) => {
     setReorderItems(
       order.items.map((i) => ({
@@ -111,6 +120,8 @@ export default function App() {
     <AndroidFrame
       currentUser={currentUser}
       onLogout={handleLogout}
+      darkTheme={darkTheme}
+      onToggleTheme={handleThemeToggle}
     >
       {/* ------------------------------------------------------------- */}
       {/* 0. AUTH / LOGIN VIEW (WHEN NOT LOGGED IN)                    */}
