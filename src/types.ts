@@ -70,6 +70,9 @@ export interface Order {
   status: OrderStatus;
   payment_status: PaymentStatus;
   payment_method: PaymentMethod;
+  mpesa_confirmation_code?: string;
+  payment_submitted_at?: string;
+  paid_at?: string;
   detergent_choice: string;
   items: OrderItem[];
   subtotal: number;
