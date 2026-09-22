@@ -1,4 +1,4 @@
-export type UserRole = 'customer' | 'driver' | 'admin';
+export type UserRole = 'customer' | 'driver' | 'attendant' | 'admin';
 
 export type OrderStatus =
   | 'scheduled'
