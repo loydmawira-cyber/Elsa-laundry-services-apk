@@ -165,6 +165,7 @@ class StoreService {
               created_at: data.created_at || new Date().toISOString(),
               default_detergent: data.default_detergent || 'Hypoallergenic Gentle Wash (Fragrance Free)',
               avatar: data.avatar,
+              pin_hash: data.pin_hash,
             };
           } else {
             // New user without doc -> default customer doc
@@ -514,6 +515,7 @@ class StoreService {
           created_at: data.created_at || new Date().toISOString(),
           default_detergent: data.default_detergent || 'Hypoallergenic Gentle Wash (Fragrance Free)',
           avatar: data.avatar,
+          pin_hash: data.pin_hash,
         };
       } else {
         // Fallback customer doc for accounts created without a doc
@@ -780,6 +782,28 @@ class StoreService {
       this.currentUser = { ...this.currentUser, ...updates };
     }
     this.notify();
+  }
+
+  private async hashPin(pin: string): Promise<string> {
+    const bytes = new TextEncoder().encode(pin);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  public hasPin(user?: User | null): boolean {
+    return Boolean((user || this.currentUser)?.pin_hash);
+  }
+
+  public async setUserPin(userId: string, pin: string): Promise<void> {
+    if (!/^\d{4}$/.test(pin)) throw new Error('PIN must be exactly 4 digits.');
+    await this.updateProfile(userId, { pin_hash: await this.hashPin(pin) });
+  }
+
+  public async verifyUserPin(user: User, pin: string): Promise<boolean> {
+    if (!/^\d{4}$/.test(pin) || !user.pin_hash) return false;
+    return (await this.hashPin(pin)) === user.pin_hash;
   }
 
   // =========================================================================
