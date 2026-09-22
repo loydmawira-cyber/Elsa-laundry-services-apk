@@ -110,7 +110,7 @@ export default function App() {
       {/* 0. AUTH / LOGIN VIEW (WHEN NOT LOGGED IN)                    */}
       {/* ------------------------------------------------------------- */}
       {!currentUser && (
-        <LoginView onLoginSuccess={handleLoginSuccess} />
+        <LoginView onLoginSuccess={handleLoginSuccess} businessSettings={businessSettings} />
       )}
 
       {/* ------------------------------------------------------------- */}
@@ -123,6 +123,7 @@ export default function App() {
               currentUser={currentUser}
               orders={orders}
               catalog={catalog}
+              businessSettings={businessSettings}
               onOpenSchedule={() => {
                 setReorderItems(undefined);
                 setIsScheduleOpen(true);
@@ -135,6 +136,7 @@ export default function App() {
           {customerTab === 'track' && (
             <TrackOrderView
               orders={orders.filter((o) => o.customer_id === currentUser.id)}
+              businessSettings={businessSettings}
               selectedOrderId={trackOrderId}
               onSelectOrder={(id) => setTrackOrderId(id)}
               onOpenSchedule={() => {
@@ -155,6 +157,7 @@ export default function App() {
           {customerTab === 'profile' && (
             <CustomerProfileView
               currentUser={currentUser}
+              businessSettings={businessSettings}
               onLogout={handleLogout}
             />
           )}
