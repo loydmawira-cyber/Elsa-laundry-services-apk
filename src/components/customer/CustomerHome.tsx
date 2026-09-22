@@ -148,32 +148,18 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
         </button>
       </div>
 
-      {/* Quick Services Menu Showcase */}
-      <div className="space-y-2.5">
+      {/* Current Weight-Based Pricing Model */}
+      <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-700">Services & Pricing</span>
-          <button onClick={onOpenSchedule} className="text-xs text-blue-600 font-semibold hover:underline">
-            View all
-          </button>
+          <span className="text-xs font-bold text-slate-700">Weight-Based Laundry Pricing</span>
+          <button onClick={onOpenSchedule} className="text-xs text-blue-600 font-semibold hover:underline">Schedule</button>
         </div>
-
-        <div className="grid grid-cols-2 gap-2.5">
-          {catalog.slice(0, 4).map((item) => (
-            <div
-              key={item.id}
-              onClick={onOpenSchedule}
-              className="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-blue-400 cursor-pointer transition-all space-y-1.5"
-            >
-              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                <Shirt className="w-4 h-4" />
-              </div>
-              <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{item.name}</h4>
-              <p className="text-[11px] font-semibold text-blue-700">
-                KSh {item.unit_price.toLocaleString()}{' '}
-                <span className="text-[10px] text-slate-400 font-normal">{item.unit_label}</span>
-              </p>
-            </div>
-          ))}
+        <p className="text-[11px] text-slate-500">Estimate your load when booking. The final price is calculated after laundry sorting.</p>
+        <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-700">
+          <span>General: KSh 100/kg</span>
+          <span>With ironing: KSh 130/kg</span>
+          <span>Minimum charge: KSh 500</span>
+          <span>Special items priced separately</span>
         </div>
       </div>
 
