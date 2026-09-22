@@ -102,7 +102,17 @@ export const DEFAULT_BUSINESS_SETTINGS = {
     graduation_gown: 400,
     curtains: 150,
     jacket: 100,
-  },
+  } as Record<string, number>,
+  specialItemLabels: {
+    shoes: 'Shoes (pair)',
+    duvet_colored: 'Duvet (non-white)',
+    duvet_white: 'White duvet',
+    suit: 'Suit',
+    wedding_gown: 'Wedding gown',
+    graduation_gown: 'Graduation gown',
+    curtains: 'Curtains (kg)',
+    jacket: 'Trench coat / jacket',
+  } as Record<string, string>,
 };
 
 export const SPECIAL_ITEM_LABELS: Record<string, string> = {
