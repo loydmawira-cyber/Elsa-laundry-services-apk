@@ -199,6 +199,33 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
         </div>
       </div>
 
+      {/* Payment confirmation status */}
+      <div className={`rounded-3xl p-4 border shadow-xs ${targetOrder.payment_status === 'paid' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+        <div className="flex items-start gap-3">
+          {targetOrder.payment_status === 'paid' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+          )}
+          <div className="flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className={`text-xs font-extrabold ${targetOrder.payment_status === 'paid' ? 'text-emerald-900' : 'text-amber-900'}`}>
+                Payment {targetOrder.payment_status === 'paid' ? 'confirmed' : 'awaiting confirmation'}
+              </h3>
+              <span className="text-xs font-extrabold text-slate-900">KSh {Math.round(targetOrder.total_amount).toLocaleString()}</span>
+            </div>
+            <p className={`text-[11px] mt-1 ${targetOrder.payment_status === 'paid' ? 'text-emerald-800' : 'text-amber-800'}`}>
+              {targetOrder.payment_status === 'paid'
+                ? 'Your payment was successfully confirmed by Elsa Laundry Services.'
+                : 'Your M-Pesa payment code was submitted. The order will update here after an admin verifies it.'}
+            </p>
+            {targetOrder.mpesa_confirmation_code && (
+              <p className="text-[10px] text-slate-600 mt-1 font-semibold">M-Pesa code: {targetOrder.mpesa_confirmation_code}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Driver Information Card */}
       <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-3">
