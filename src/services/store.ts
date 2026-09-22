@@ -1027,6 +1027,11 @@ class StoreService {
     const orderIndex = this.orders.findIndex((o) => o.id === orderId);
     if (orderIndex === -1) return;
 
+    if (paymentStatus === 'paid' && !this.orders[orderIndex].mpesa_confirmation_code?.trim()) {
+      console.warn(`Payment cannot be marked paid for #${orderId} until the customer submits an M-Pesa code.`);
+      return;
+    }
+
     const order = {
       ...this.orders[orderIndex],
       payment_status: paymentStatus,
@@ -1077,7 +1082,7 @@ class StoreService {
     const updated = {
       ...order,
       subtotal,
-      total_amount: Math.round(subtotal + order.delivery_fee),
+      total_amount: Math.round(subtotal + (order.delivery_fee || this.businessSettings.deliveryFee || 0)),
       final_general_kg: pricing.final_general_kg,
       final_ironing: pricing.final_ironing,
       special_item_quantities: pricing.special_item_quantities,
