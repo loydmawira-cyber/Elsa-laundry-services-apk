@@ -12,6 +12,7 @@ export type OrderStatus =
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type PaymentMethod = 'mpesa' | 'card' | 'cash' | 'wallet';
+export type PricingStatus = 'estimated' | 'awaiting_customer_approval' | 'approved';
 
 export interface UserLocation {
   area: string;
@@ -81,6 +82,14 @@ export interface Order {
   total_amount: number;
   created_at: string;
   updated_at?: string;
+  pricing_status: PricingStatus;
+  estimated_general_kg?: number;
+  ironing_requested?: boolean;
+  final_general_kg?: number;
+  final_ironing?: boolean;
+  special_item_quantities?: Record<string, number>;
+  sorting_notes?: string;
+  customer_price_approved_at?: string;
   proof_photo?: string | null;
   driver_notes?: string;
   status_history: {
