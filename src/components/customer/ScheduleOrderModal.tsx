@@ -79,7 +79,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
 
   // Payment
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa');
-  const [mpesaNumber, setMpesaNumber] = useState(currentUser.phone || '+254 712 345 678');
+  const [mpesaConfirmationCode, setMpesaConfirmationCode] = useState('');
   const [cardNumber, setCardNumber] = useState('•••• •••• •••• 4242');
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
 
@@ -118,6 +118,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
 
   const handleSubmitOrder = async () => {
     if (selectedItems.length === 0) return;
+    if (paymentMethod === 'mpesa' && !mpesaConfirmationCode.trim()) return;
 
     const order = await store.createOrder({
       customer: currentUser,
@@ -128,6 +129,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
       items: selectedItems as OrderItem[],
       detergent_choice: detergentChoice,
       payment_method: paymentMethod,
+      mpesa_confirmation_code: paymentMethod === 'mpesa' ? mpesaConfirmationCode.trim() : undefined,
     });
 
     setCreatedOrderId(order.id);
@@ -173,7 +175,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 {step === 'items' && 'Step 1 of 4: Select Garments & Care'}
                 {step === 'schedule' && 'Step 2 of 4: Pick Windows & Address'}
                 {step === 'detergent' && 'Step 3 of 4: Detergent Preferences'}
-                {step === 'payment' && 'Step 4 of 4: Review & Payment'}
+                {step === 'payment' && 'Step 4 of 4: Pay & Submit Confirmation'}
                 {step === 'success' && 'Order Confirmed!'}
               </p>
             </div>
@@ -512,19 +514,32 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
               {paymentMethod === 'mpesa' && (
                 <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-xs">
                   <div className="flex justify-between items-center text-emerald-900 font-semibold">
-                    <span>Safaricom M-Pesa Prompt</span>
+                    <span>Pay with M-Pesa</span>
                     <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
-                      Instant STK Push
+                      Manual confirmation
                     </span>
                   </div>
+                  <p className="text-[11px] text-emerald-800 font-semibold">
+                    Send <span className="font-extrabold">KSh {totalAmount.toLocaleString()}</span> to:
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white border border-emerald-200 rounded-lg p-2">
+                      <span className="block text-[10px] text-emerald-700 uppercase font-bold">Paybill</span>
+                      <span className="text-base font-extrabold text-emerald-950">522533</span>
+                    </div>
+                    <div className="bg-white border border-emerald-200 rounded-lg p-2">
+                      <span className="block text-[10px] text-emerald-700 uppercase font-bold">Account</span>
+                      <span className="text-base font-extrabold text-emerald-950">7986811</span>
+                    </div>
+                  </div>
                   <p className="text-[11px] text-emerald-700">
-                    A prompt will be sent to this number to authorize KSh {totalAmount.toLocaleString()} via M-Pesa PIN:
+                    After paying, enter the M-Pesa confirmation code from the SMS below. Your order will stay awaiting confirmation until an admin verifies the payment.
                   </p>
                   <input
                     type="text"
-                    value={mpesaNumber}
-                    onChange={(e) => setMpesaNumber(e.target.value)}
-                    placeholder="e.g. +254 712 345 678"
+                    value={mpesaConfirmationCode}
+                    onChange={(e) => setMpesaConfirmationCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. QHX7ABC123"
                     className="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs font-medium text-slate-800"
                   />
                 </div>
@@ -558,7 +573,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
               <div>
                 <h3 className="text-base font-extrabold text-slate-900">Order #{createdOrderId} Placed!</h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-                  A driver has been assigned to pick up your garments during the window:{' '}
+                  Payment received for review. Your order is awaiting confirmation while our admin verifies the M-Pesa payment. Pickup window:{' '}
                   <span className="font-semibold text-slate-700">{pickupWindow}</span>
                 </p>
               </div>
@@ -575,6 +590,10 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 <div className="flex justify-between font-bold text-blue-950 border-t border-blue-200 pt-1">
                   <span>Total:</span>
                   <span>KSh {totalAmount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-amber-800 font-bold border-t border-blue-200 pt-1">
+                  <span>Payment:</span>
+                  <span>Awaiting confirmation</span>
                 </div>
               </div>
 
@@ -648,10 +667,11 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
             {step === 'payment' && (
               <button
                 type="button"
+                disabled={paymentMethod === 'mpesa' && !mpesaConfirmationCode.trim()}
                 onClick={handleSubmitOrder}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
               >
-                <span>Confirm & Pay KSh {totalAmount.toLocaleString()}</span>
+                  <span>Submit Payment KSh {totalAmount.toLocaleString()}</span>
                 <CheckCircle2 className="w-3.5 h-3.5" />
               </button>
             )}
