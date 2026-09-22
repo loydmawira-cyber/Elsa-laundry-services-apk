@@ -287,6 +287,17 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* 3. ADMIN ROLE SCREENS                                        */}
       {/* ------------------------------------------------------------- */}
+      {currentUser && !isPinLocked && currentUser.role === 'attendant' && (
+        <div className="flex-1 flex flex-col h-full">
+          <AdminOrdersView
+            orders={orders}
+            users={allUsers}
+            initialSelectedOrderId={null}
+            mode="attendant"
+          />
+        </div>
+      )}
+
       {currentUser && !isPinLocked && currentUser.role === 'admin' && (
         <div className="flex-1 flex flex-col h-full relative">
           {adminTab === 'dashboard' && (
