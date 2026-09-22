@@ -38,6 +38,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
   const [finalIroning, setFinalIroning] = useState(false);
   const [sortedItems, setSortedItems] = useState<Record<string, number>>({});
   const [sortingNotes, setSortingNotes] = useState('');
+  const [pricingMessage, setPricingMessage] = useState('');
 
   // Keep selectedOrder in sync with real-time updates to orders prop
   useEffect(() => {
@@ -90,14 +91,29 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
 
   const handleSaveFinalPricing = async () => {
     if (!selectedOrder) return;
-    await store.updateFinalPricing(selectedOrder.id, {
-      final_general_kg: finalKg,
-      final_ironing: finalIroning,
-      special_item_quantities: sortedItems,
-      sorting_notes: sortingNotes,
-    });
-    const updated = store.getOrderById(selectedOrder.id);
-    if (updated) setSelectedOrder(updated);
+    if (finalKg <= 0 && Object.values(sortedItems).every((quantity) => Number(quantity) <= 0)) {
+      setPricingMessage('Enter the sorted weight or at least one special item quantity first.');
+      return;
+    }
+    setPricingMessage('');
+    try {
+      await store.updateFinalPricing(selectedOrder.id, {
+        final_general_kg: finalKg,
+        final_ironing: finalIroning,
+        special_item_quantities: sortedItems,
+        sorting_notes: sortingNotes,
+      });
+      const updated = store.getOrderById(selectedOrder.id);
+      if (updated) {
+        setSelectedOrder(updated);
+        setPricingMessage(`Final price sent: KSh ${Math.round(updated.total_amount).toLocaleString()}`);
+      } else {
+        setPricingMessage('Could not find this order in the local order list. Refresh and try again.');
+      }
+    } catch (error) {
+      console.error('Final pricing failed:', error);
+      setPricingMessage('Final price could not be saved. Check the connection and try again.');
+    }
   };
 
   return (
@@ -395,6 +411,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                 <button type="button" onClick={handleSaveFinalPricing} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs">
                   Calculate & Send Final Price
                 </button>
+                {pricingMessage && <p className={`text-[11px] font-bold ${pricingMessage.startsWith('Final price sent') ? 'text-emerald-700' : 'text-rose-700'}`}>{pricingMessage}</p>}
               </div>
 
               {/* PAYMENT CONFIRMATION */}
@@ -421,12 +438,16 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                 {selectedOrder.payment_status !== 'paid' && (
                   <button
                     type="button"
+                    disabled={!selectedOrder.mpesa_confirmation_code?.trim() || selectedOrder.pricing_status !== 'approved'}
                     onClick={() => handleMarkPaymentPaid(selectedOrder.id)}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     Mark as paid
                   </button>
+                )}
+                {selectedOrder.payment_status !== 'paid' && !selectedOrder.mpesa_confirmation_code?.trim() && (
+                  <p className="text-[10px] text-amber-800 font-semibold">Mark as paid becomes active only after the customer submits the M-Pesa confirmation code.</p>
                 )}
               </div>
 
