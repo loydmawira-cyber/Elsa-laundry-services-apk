@@ -41,18 +41,6 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
 }) => {
   const [step, setStep] = useState<'items' | 'schedule' | 'detergent' | 'payment' | 'success'>('items');
 
-  // Order Items State
-  const [selectedItems, setSelectedItems] = useState<
-    { item_type: string; quantity: number; care_notes: string; price: number }[]
-  >(
-    initialItems || [
-      { item_type: 'Wash & Fold (Bag)', quantity: 1, care_notes: 'Standard cold wash', price: 650 },
-      { item_type: 'Dress Shirt (Launder & Press)', quantity: 2, care_notes: 'Hang dry, light starch', price: 150 },
-    ]
-  );
-
-  const [activeCareNotesIndex, setActiveCareNotesIndex] = useState<number | null>(null);
-
   // Address & Timing
   const savedAddresses = store.getAddresses(currentUser.id);
   const activeLocation = store.getLocation();
@@ -91,32 +79,6 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
   const deliveryFee = store.getBusinessSettings().deliveryFee;
   const totalAmount = Math.round(subtotal + deliveryFee);
 
-  const handleUpdateItemQuantity = (catalogName: string, price: number, delta: number) => {
-    setSelectedItems((prev) => {
-      const existingIndex = prev.findIndex((i) => i.item_type === catalogName);
-      if (existingIndex > -1) {
-        const newQty = prev[existingIndex].quantity + delta;
-        if (newQty <= 0) {
-          return prev.filter((_, idx) => idx !== existingIndex);
-        }
-        const updated = [...prev];
-        updated[existingIndex] = { ...updated[existingIndex], quantity: newQty };
-        return updated;
-      } else if (delta > 0) {
-        return [...prev, { item_type: catalogName, quantity: 1, care_notes: '', price }];
-      }
-      return prev;
-    });
-  };
-
-  const handleUpdateCareNote = (index: number, note: string) => {
-    setSelectedItems((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], care_notes: note };
-      return updated;
-    });
-  };
-
   const handleSubmitOrder = async () => {
     if (generalKg <= 0 && Object.values(specialItems).every((quantity) => Number(quantity) <= 0)) return;
 
@@ -128,7 +90,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
         dropoff_address: sameAsPickup ? pickupAddress : dropoffAddress,
         pickup_window: pickupWindow,
         dropoff_window: dropoffWindow,
-        items: selectedItems as OrderItem[],
+        items: [{ item_type: 'Laundry pricing request', quantity: 1, care_notes: 'Final sorting and pricing at facility', price: 0 } as OrderItem],
         detergent_choice: detergentChoice,
         payment_method: 'mpesa',
         estimated_general_kg: generalKg,
@@ -144,26 +106,6 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
     }
   };
 
-  const getItemIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'Shirt':
-        return <Shirt className="w-5 h-5 text-blue-600" />;
-      case 'Scissors':
-        return <Scissors className="w-5 h-5 text-indigo-600" />;
-      case 'Layers':
-        return <Layers className="w-5 h-5 text-purple-600" />;
-      case 'Sparkles':
-        return <Sparkles className="w-5 h-5 text-teal-600" />;
-      case 'HeartHandshake':
-        return <HeartHandshake className="w-5 h-5 text-rose-500" />;
-      case 'Shield':
-        return <Shield className="w-5 h-5 text-amber-600" />;
-      case 'Feather':
-        return <Feather className="w-5 h-5 text-emerald-600" />;
-      default:
-        return <Shirt className="w-5 h-5 text-blue-600" />;
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
@@ -200,7 +142,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
         {step !== 'success' && (
           <div className="bg-blue-50/80 px-5 py-2.5 border-b border-blue-100 flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 text-blue-900 font-semibold">
-              <span>{selectedItems.reduce((s, i) => s + i.quantity, 0)} Items Added</span>
+              <span>New pricing model</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-slate-500">Running Total:</span>
@@ -237,7 +179,22 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                   {Object.entries(SPECIAL_ITEM_LABELS).map(([key, label]) => (
                     <label key={key} className="text-[10px] font-bold text-blue-950">
                       {label}
-                      <input type="number" min="0" value={specialItems[key] || 0} onChange={(e) => setSpecialItems((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value)) }))} className="mt-1 w-full p-2 bg-white border border-blue-200 rounded-lg text-xs" />
+                      <input
+                        type="number"
+                        min="0"
+                        value={specialItems[key] ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setSpecialItems((prev) => {
+                            const next = { ...prev };
+                            if (value === '') delete next[key];
+                            else next[key] = Math.max(0, Number(value));
+                            return next;
+                          });
+                        }}
+                        placeholder="0"
+                        className="mt-1 w-full p-2 bg-white border border-blue-200 rounded-lg text-xs"
+                      />
                     </label>
                   ))}
                 </div>
@@ -247,84 +204,6 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-2.5">
-                {catalog.map((item) => {
-                  const currentSelected = selectedItems.find((i) => i.item_type === item.name);
-                  const qty = currentSelected ? currentSelected.quantity : 0;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className={`p-3 rounded-2xl border transition-all ${
-                        qty > 0
-                          ? 'border-blue-500/80 bg-blue-50/40 shadow-xs'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                            {getItemIcon(item.icon)}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-xs font-bold text-slate-900">{item.name}</h4>
-                              {item.popular && (
-                                <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1.5 py-0.2 rounded-full">
-                                  Popular
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-slate-500 font-medium">
-                              KSh {item.unit_price.toLocaleString()} {item.unit_label}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Stepper Buttons */}
-                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1 shadow-xs">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateItemQuantity(item.name, item.unit_price, -1)}
-                            disabled={qty === 0}
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-colors ${
-                              qty > 0 ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'text-slate-300'
-                            }`}
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="w-6 text-center text-xs font-bold text-slate-900">{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateItemQuantity(item.name, item.unit_price, 1)}
-                            className="w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white flex items-center justify-center text-xs transition-colors"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Care note preview / expander if item selected */}
-                      {qty > 0 && (
-                        <div className="mt-2.5 pt-2 border-t border-blue-100/80">
-                          <div className="flex items-center justify-between">
-                            <input
-                              type="text"
-                              value={currentSelected?.care_notes || ''}
-                              onChange={(e) => {
-                                const idx = selectedItems.findIndex((i) => i.item_type === item.name);
-                                if (idx > -1) handleUpdateCareNote(idx, e.target.value);
-                              }}
-                              placeholder="Special care notes: e.g. delicate spin, cold water, no dryer..."
-                              className="w-full text-[11px] bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
 
@@ -478,14 +357,14 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
             <div className="space-y-4">
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs">
                 <h4 className="font-bold text-slate-900">Estimated Order Summary</h4>
-                {selectedItems.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-slate-600">
-                    <span>
-                      {item.quantity}x {item.item_type}
-                    </span>
-                    <span className="font-medium">KSh {(item.price * item.quantity).toLocaleString()}</span>
-                  </div>
-                ))}
+                <div className="flex justify-between text-slate-600">
+                  <span>General laundry estimate</span>
+                  <span className="font-medium">{generalKg} kg {ironingRequested ? '(with ironing)' : ''}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Special items</span>
+                  <span className="font-medium">{Object.values(specialItems).reduce((sum, quantity) => Number(sum) + Number(quantity), 0)} units/kg</span>
+                </div>
                 <div className="border-t border-slate-200 pt-2 flex justify-between text-slate-500">
                   <span>Delivery & Pickup Fee (Nairobi)</span>
                   <span>KSh {deliveryFee.toLocaleString()}</span>
@@ -571,7 +450,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
             {step === 'items' && (
               <button
                 type="button"
-                disabled={selectedItems.length === 0}
+                disabled={generalKg <= 0 && Object.values(specialItems).every((quantity) => Number(quantity) <= 0)}
                 onClick={() => setStep('schedule')}
                 className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20"
               >
