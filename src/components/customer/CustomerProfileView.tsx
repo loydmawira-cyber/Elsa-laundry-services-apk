@@ -15,20 +15,24 @@ import {
   Home,
 } from 'lucide-react';
 import { User, Address } from '../../types';
-import { store, DETERGENT_OPTIONS } from '../../services/store';
+import { store, DETERGENT_OPTIONS, DEFAULT_BUSINESS_SETTINGS } from '../../services/store';
+import { PinSettings } from '../PinSecurity';
 
 interface CustomerProfileViewProps {
   currentUser: User;
+  businessSettings: typeof DEFAULT_BUSINESS_SETTINGS;
   onLogout?: () => void;
 }
 
 export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   currentUser,
+  businessSettings,
   onLogout,
 }) => {
   const [addresses, setAddresses] = useState<Address[]>(
     store.getAddresses(currentUser.id)
   );
+  const defaultAddress = addresses.find((address) => address.is_default) || addresses[0];
   const [detergentChoice, setDetergentChoice] = useState(
     currentUser.default_detergent || DETERGENT_OPTIONS[0].name
   );
@@ -38,7 +42,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [newLabel, setNewLabel] = useState('Home');
   const [newStreet, setNewStreet] = useState('');
-  const [newCity, setNewCity] = useState('Nairobi, Kenya');
+  const [newCity, setNewCity] = useState(defaultAddress?.city || '');
 
   const handleUpdateDetergent = (name: string) => {
     setDetergentChoice(name);
@@ -51,13 +55,14 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     e.preventDefault();
     if (!newStreet.trim()) return;
 
+    const location = store.getLocation();
     await store.addAddress({
       customer_id: currentUser.id,
       label: newLabel,
       street: newStreet.trim(),
       city: newCity.trim(),
-      lat: -1.2921,
-      lng: 36.8219,
+      lat: location.lat || 0,
+      lng: location.lng || 0,
       is_default: addresses.length === 0,
     });
 
@@ -75,7 +80,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     <div className="flex-1 p-4 space-y-4 pb-20">
       <div>
         <h2 className="text-base font-extrabold text-slate-900 tracking-tight">My Account</h2>
-        <p className="text-xs text-slate-500">Preferences, default Nairobi addresses, & laundry settings</p>
+        <p className="text-xs text-slate-500">Your account details, saved addresses, & laundry settings</p>
       </div>
 
       {/* User Info Card */}
@@ -106,6 +111,8 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
           </div>
         </div>
       </div>
+
+      <PinSettings user={currentUser} />
 
       {/* Default Detergent Preference */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-3">
@@ -270,8 +277,8 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
         <div className="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-xs font-bold text-slate-900">Elsie Kaburu</h4>
-              <p className="text-[11px] text-blue-700 font-medium">Owner & Customer Support Lead</p>
+              <h4 className="text-xs font-bold text-slate-900">{businessSettings.businessName}</h4>
+              <p className="text-[11px] text-blue-700 font-medium">Customer Support</p>
             </div>
             <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
               Available 7 Days
@@ -280,14 +287,14 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
 
           <div className="flex gap-2 pt-1">
             <a
-              href="tel:+254796896239"
+              href={`tel:${businessSettings.phone.replace(/[^+\d]/g, '')}`}
               className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
             >
               <Phone className="w-3.5 h-3.5" />
               <span>Call Helpline</span>
             </a>
             <a
-              href="mailto:Elsierichard76@gmail.com"
+              href={`mailto:${businessSettings.email}`}
               className="flex-1 py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
             >
               <Mail className="w-3.5 h-3.5 text-blue-600" />
@@ -298,11 +305,11 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
           <div className="pt-2 border-t border-blue-100/80 flex flex-col gap-1 text-[11px] text-slate-600">
             <div className="flex items-center justify-between">
               <span className="text-slate-500">Direct Phone:</span>
-              <span className="font-bold text-slate-900">+254 796 896 239</span>
+              <span className="font-bold text-slate-900">{businessSettings.phone}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-500">Official Email:</span>
-              <span className="font-bold text-slate-900 truncate">Elsierichard76@gmail.com</span>
+              <span className="font-bold text-slate-900 truncate">{businessSettings.email}</span>
             </div>
           </div>
         </div>
