@@ -19,7 +19,7 @@ import {
   ArrowRight,
   Info,
 } from 'lucide-react';
-import { store, DETERGENT_OPTIONS } from '../../services/store';
+import { store, DETERGENT_OPTIONS, calculateLaundryPrice, SPECIAL_ITEM_LABELS } from '../../services/store';
 import { User, OrderItem, LaundryCatalogItem } from '../../types';
 
 interface ScheduleOrderModalProps {
@@ -78,14 +78,17 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
 
   // Payment
   const [mpesaConfirmationCode, setMpesaConfirmationCode] = useState('');
+  const [generalKg, setGeneralKg] = useState(5);
+  const [ironingRequested, setIroningRequested] = useState(false);
+  const [specialItems, setSpecialItems] = useState<Record<string, number>>({});
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
   const [submitError, setSubmitError] = useState('');
 
   if (!isOpen) return null;
 
   // Price calculations in KES
-  const subtotal = selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const deliveryFee = subtotal > 0 ? 200 : 0;
+  const subtotal = calculateLaundryPrice({ generalKg, ironing: ironingRequested, specialItems });
+  const deliveryFee = store.getBusinessSettings().deliveryFee;
   const totalAmount = Math.round(subtotal + deliveryFee);
 
   const handleUpdateItemQuantity = (catalogName: string, price: number, delta: number) => {
@@ -115,8 +118,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
   };
 
   const handleSubmitOrder = async () => {
-    if (selectedItems.length === 0) return;
-    if (!mpesaConfirmationCode.trim()) return;
+    if (generalKg <= 0 && Object.values(specialItems).every((quantity) => Number(quantity) <= 0)) return;
 
     setSubmitError('');
     try {
@@ -129,7 +131,9 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
         items: selectedItems as OrderItem[],
         detergent_choice: detergentChoice,
         payment_method: 'mpesa',
-        mpesa_confirmation_code: mpesaConfirmationCode.trim(),
+        estimated_general_kg: generalKg,
+        ironing_requested: ironingRequested,
+        special_item_quantities: specialItems,
       });
 
       setCreatedOrderId(order.id);
@@ -179,7 +183,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 {step === 'items' && 'Step 1 of 4: Select Garments & Care'}
                 {step === 'schedule' && 'Step 2 of 4: Pick Windows & Address'}
                 {step === 'detergent' && 'Step 3 of 4: Detergent Preferences'}
-                {step === 'payment' && 'Step 4 of 4: Pay & Submit Confirmation'}
+                {step === 'payment' && 'Step 4 of 4: Review Estimate'}
                 {step === 'success' && 'Order Confirmed!'}
               </p>
             </div>
@@ -214,9 +218,33 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Laundry Menu & Unit Pricing (KES)
+                  Laundry Estimate
                 </span>
-                <span className="text-[11px] text-blue-600 font-medium">Add special care notes below</span>
+                <span className="text-[11px] text-blue-600 font-medium">Final price is set after sorting</span>
+              </div>
+
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-blue-950">Estimated general laundry weight (kg)</label>
+                  <input type="number" min="0" step="0.1" value={generalKg} onChange={(e) => setGeneralKg(Math.max(0, Number(e.target.value)))} className="mt-1 w-full p-2.5 bg-white border border-blue-200 rounded-xl text-xs font-bold" />
+                  <p className="text-[10px] text-blue-700 mt-1">Below 5 kg, general laundry is charged at the KSh 500 minimum.</p>
+                </div>
+                <label className="flex items-center gap-2 text-xs font-bold text-blue-950">
+                  <input type="checkbox" checked={ironingRequested} onChange={(e) => setIroningRequested(e.target.checked)} className="rounded text-blue-600" />
+                  Include ironing (KSh 130 per kg)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(SPECIAL_ITEM_LABELS).map(([key, label]) => (
+                    <label key={key} className="text-[10px] font-bold text-blue-950">
+                      {label}
+                      <input type="number" min="0" value={specialItems[key] || 0} onChange={(e) => setSpecialItems((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value)) }))} className="mt-1 w-full p-2 bg-white border border-blue-200 rounded-lg text-xs" />
+                    </label>
+                  ))}
+                </div>
+                <div className="pt-2 border-t border-blue-200 flex justify-between text-sm font-extrabold text-blue-950">
+                  <span>Estimated total including delivery</span>
+                  <span>KSh {totalAmount.toLocaleString()}</span>
+                </div>
               </div>
 
               <div className="space-y-2.5">
@@ -449,7 +477,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
           {step === 'payment' && (
             <div className="space-y-4">
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs">
-                <h4 className="font-bold text-slate-900">Order Summary</h4>
+                <h4 className="font-bold text-slate-900">Estimated Order Summary</h4>
                 {selectedItems.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-slate-600">
                     <span>
@@ -468,37 +496,8 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 </div>
               </div>
 
-              {/* M-Pesa Paybill payment */}
-              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-xs">
-                  <div className="flex justify-between items-center text-emerald-900 font-semibold">
-                    <span>Pay with M-Pesa</span>
-                    <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
-                      Manual confirmation
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-emerald-800 font-semibold">
-                    Send <span className="font-extrabold">KSh {totalAmount.toLocaleString()}</span> to:
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-white border border-emerald-200 rounded-lg p-2">
-                      <span className="block text-[10px] text-emerald-700 uppercase font-bold">Paybill</span>
-                      <span className="text-base font-extrabold text-emerald-950">522533</span>
-                    </div>
-                    <div className="bg-white border border-emerald-200 rounded-lg p-2">
-                      <span className="block text-[10px] text-emerald-700 uppercase font-bold">Account</span>
-                      <span className="text-base font-extrabold text-emerald-950">7986811</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-emerald-700">
-                    After paying, enter the M-Pesa confirmation code from the SMS below. Your order will stay awaiting confirmation until an admin verifies the payment.
-                  </p>
-                  <input
-                    type="text"
-                    value={mpesaConfirmationCode}
-                    onChange={(e) => setMpesaConfirmationCode(e.target.value.toUpperCase())}
-                    placeholder="e.g. QHX7ABC123"
-                    className="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs font-medium text-slate-800"
-                  />
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+                <strong>Do not pay yet.</strong> This is an estimate. Elsa Laundry will sort and weigh your laundry, then send the final amount for your approval before M-Pesa payment.
               </div>
             </div>
           )}
@@ -512,7 +511,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
               <div>
                 <h3 className="text-base font-extrabold text-slate-900">Order #{createdOrderId} Placed!</h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-                  Payment received for review. Your order is awaiting confirmation while our admin verifies the M-Pesa payment. Pickup window:{' '}
+                  Your order request was received. Elsa Laundry will sort and weigh the laundry, then send you the final price for approval. Pickup window:{' '}
                   <span className="font-semibold text-slate-700">{pickupWindow}</span>
                 </p>
               </div>
@@ -527,12 +526,12 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                   <span className="truncate max-w-[150px]">{detergentChoice}</span>
                 </div>
                 <div className="flex justify-between font-bold text-blue-950 border-t border-blue-200 pt-1">
-                  <span>Total:</span>
+                  <span>Estimated total:</span>
                   <span>KSh {totalAmount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-amber-800 font-bold border-t border-blue-200 pt-1">
-                  <span>Payment:</span>
-                  <span>Awaiting confirmation</span>
+                  <span>Next step:</span>
+                  <span>Awaiting sorting</span>
                 </div>
               </div>
 
@@ -598,7 +597,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 onClick={() => setStep('payment')}
                 className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20"
               >
-                <span>Proceed to Payment</span>
+                <span>Review Estimate</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
@@ -608,11 +607,10 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 {submitError && <p className="text-[10px] text-red-600 font-semibold max-w-[190px] text-right">{submitError}</p>}
                 <button
                   type="button"
-                  disabled={!mpesaConfirmationCode.trim()}
                   onClick={handleSubmitOrder}
                   className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
                 >
-                  <span>Submit Payment KSh {totalAmount.toLocaleString()}</span>
+                  <span>Submit Order Request</span>
                   <CheckCircle2 className="w-3.5 h-3.5" />
                 </button>
               </div>
