@@ -156,10 +156,21 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
         </div>
         <p className="text-[11px] text-slate-500">Estimate your load when booking. The final price is calculated after laundry sorting.</p>
         <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-700">
-          <span>General: KSh 100/kg</span>
-          <span>With ironing: KSh 130/kg</span>
-          <span>Minimum charge: KSh 500</span>
-          <span>Special items priced separately</span>
+          <span>General: KSh {businessSettings.generalLaundryRate}/kg</span>
+          <span>With ironing: KSh {businessSettings.ironingRate}/kg</span>
+          <span>Minimum charge: KSh {businessSettings.minimumLaundryCharge}</span>
+          <span>Delivery: KSh {businessSettings.deliveryFee}</span>
+        </div>
+        <div className="pt-2 border-t border-slate-100 space-y-1.5">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Special services</span>
+          {Object.entries(businessSettings.specialItemLabels || {})
+            .filter(([key]) => Number(businessSettings.specialItemRates?.[key] || 0) > 0)
+            .map(([key, label]) => (
+              <div key={key} className="flex items-center justify-between text-[11px] text-slate-700">
+                <span>{label}</span>
+                <span className="font-bold text-blue-700">KSh {Number(businessSettings.specialItemRates[key]).toLocaleString()}</span>
+              </div>
+            ))}
         </div>
       </div>
 
