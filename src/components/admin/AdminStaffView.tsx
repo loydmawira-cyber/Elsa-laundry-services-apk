@@ -26,12 +26,13 @@ export const AdminStaffView: React.FC<AdminStaffViewProps> = ({ users, orders })
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('+254 7');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'driver' | 'admin'>('driver');
+  const [role, setRole] = useState<'driver' | 'attendant' | 'admin'>('driver');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   const drivers = users.filter((u) => u.role === 'driver');
+  const attendants = users.filter((u) => u.role === 'attendant');
   const admins = users.filter((u) => u.role === 'admin');
 
   const handleCreateStaff = async (e: React.FormEvent) => {
@@ -62,7 +63,7 @@ export const AdminStaffView: React.FC<AdminStaffViewProps> = ({ users, orders })
         role: role,
       });
 
-      setSuccessMsg(`Successfully created ${role === 'admin' ? 'Administrator' : 'Courier'} account for ${name.trim()}!`);
+      setSuccessMsg(`Successfully created ${role === 'admin' ? 'Administrator' : role === 'attendant' ? 'Attendant' : 'Courier'} account for ${name.trim()}!`);
       setName('');
       setEmail('');
       setPhone('+254 7');
@@ -150,7 +151,7 @@ export const AdminStaffView: React.FC<AdminStaffViewProps> = ({ users, orders })
             <form onSubmit={handleCreateStaff} className="space-y-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Role Type</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setRole('driver')}
@@ -174,6 +175,18 @@ export const AdminStaffView: React.FC<AdminStaffViewProps> = ({ users, orders })
                   >
                     <Shield className="w-3.5 h-3.5 text-blue-700" />
                     <span>Administrator</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('attendant')}
+                    className={`py-2 px-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                      role === 'attendant'
+                        ? 'bg-emerald-50 border-emerald-400 text-emerald-900 shadow-xs'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Attendant</span>
                   </button>
                 </div>
               </div>
@@ -357,6 +370,27 @@ export const AdminStaffView: React.FC<AdminStaffViewProps> = ({ users, orders })
                   <span className="font-semibold text-white">{adm.email}</span>
                 </div>
               </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Attendants Section */}
+      <div className="pt-2 space-y-3">
+        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Laundry Attendants ({attendants.length})</h3>
+        {attendants.length === 0 ? (
+          <div className="bg-white rounded-3xl p-5 border border-slate-200 text-center text-xs text-slate-500">No attendant accounts added yet.</div>
+        ) : (
+          attendants.map((attendant) => (
+            <div key={attendant.id} className="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs flex items-center justify-between text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center font-bold">{attendant.name.split(' ').map((n) => n[0]).join('').toUpperCase()}</div>
+                <div>
+                  <p className="font-extrabold text-slate-900">{attendant.name}</p>
+                  <p className="text-[11px] text-slate-500">{attendant.phone} • {attendant.email}</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 px-2 py-1 rounded-full border border-emerald-200">Attendant</span>
             </div>
           ))
         )}
