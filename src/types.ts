@@ -34,6 +34,7 @@ export interface User {
   created_at: string;
   default_detergent?: string;
   avatar?: string;
+  pin_hash?: string;
 }
 
 export interface Address {
