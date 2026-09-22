@@ -16,7 +16,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Order, User as UserType, OrderStatus } from '../../types';
-import { store } from '../../services/store';
+import { store, SPECIAL_ITEM_LABELS } from '../../services/store';
 
 interface AdminOrdersViewProps {
   orders: Order[];
@@ -34,6 +34,10 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(
     orders.find((o) => o.id === initialSelectedOrderId) || null
   );
+  const [finalKg, setFinalKg] = useState(0);
+  const [finalIroning, setFinalIroning] = useState(false);
+  const [sortedItems, setSortedItems] = useState<Record<string, number>>({});
+  const [sortingNotes, setSortingNotes] = useState('');
 
   // Keep selectedOrder in sync with real-time updates to orders prop
   useEffect(() => {
@@ -41,6 +45,10 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
       const updated = orders.find((o) => o.id === selectedOrder.id);
       if (updated) {
         setSelectedOrder(updated);
+        setFinalKg(updated.final_general_kg || updated.estimated_general_kg || 0);
+        setFinalIroning(Boolean(updated.final_ironing ?? updated.ironing_requested));
+        setSortedItems(updated.special_item_quantities || {});
+        setSortingNotes(updated.sorting_notes || '');
       }
     }
   }, [orders]);
@@ -77,6 +85,18 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
   const handleMarkPaymentPaid = (orderId: string) => {
     store.updatePaymentStatus(orderId, 'paid');
     const updated = store.getOrderById(orderId);
+    if (updated) setSelectedOrder(updated);
+  };
+
+  const handleSaveFinalPricing = async () => {
+    if (!selectedOrder) return;
+    await store.updateFinalPricing(selectedOrder.id, {
+      final_general_kg: finalKg,
+      final_ironing: finalIroning,
+      special_item_quantities: sortedItems,
+      sorting_notes: sortingNotes,
+    });
+    const updated = store.getOrderById(selectedOrder.id);
     if (updated) setSelectedOrder(updated);
   };
 
@@ -132,7 +152,13 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
           filteredOrders.map((order) => (
             <div
               key={order.id}
-              onClick={() => setSelectedOrder(order)}
+              onClick={() => {
+                setSelectedOrder(order);
+                setFinalKg(order.final_general_kg || order.estimated_general_kg || 0);
+                setFinalIroning(Boolean(order.final_ironing ?? order.ironing_requested));
+                setSortedItems(order.special_item_quantities || {});
+                setSortingNotes(order.sorting_notes || '');
+              }}
               className="bg-white p-3.5 rounded-2xl border border-slate-200 hover:border-blue-400 shadow-xs cursor-pointer transition-all space-y-2 text-xs"
             >
               <div className="flex items-center justify-between">
@@ -341,6 +367,34 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                     <span>Dropoff: {selectedOrder.dropoff_address}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* SORTING & FINAL PRICING */}
+              <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl space-y-3">
+                <div>
+                  <span className="font-bold text-indigo-950 block">Laundry Sorting & Final Price</span>
+                  <p className="text-[11px] text-indigo-700 mt-1">Enter the actual sorted weight and special items. The customer will approve this amount before paying.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-[10px] font-bold text-indigo-950">General laundry (kg)
+                    <input type="number" min="0" step="0.1" value={finalKg} onChange={(e) => setFinalKg(Math.max(0, Number(e.target.value)))} className="mt-1 w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs" />
+                  </label>
+                  <label className="flex items-center gap-2 text-[10px] font-bold text-indigo-950 pt-5">
+                    <input type="checkbox" checked={finalIroning} onChange={(e) => setFinalIroning(e.target.checked)} className="rounded text-indigo-600" />
+                    Include ironing
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(SPECIAL_ITEM_LABELS).map(([key, label]) => (
+                    <label key={key} className="text-[10px] font-bold text-indigo-950">{label}
+                      <input type="number" min="0" value={sortedItems[key] || 0} onChange={(e) => setSortedItems((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value)) }))} className="mt-1 w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs" />
+                    </label>
+                  ))}
+                </div>
+                <textarea value={sortingNotes} onChange={(e) => setSortingNotes(e.target.value)} placeholder="Sorting notes for customer (optional)" className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs" rows={2} />
+                <button type="button" onClick={handleSaveFinalPricing} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs">
+                  Calculate & Send Final Price
+                </button>
               </div>
 
               {/* PAYMENT CONFIRMATION */}
