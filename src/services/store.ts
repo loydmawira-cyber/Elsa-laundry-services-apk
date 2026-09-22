@@ -581,7 +581,7 @@ class StoreService {
       try {
         if (resolvedUser.role === 'customer') {
           await setPersistence(auth, browserLocalPersistence);
-        } else if (resolvedUser.role === 'driver' || resolvedUser.role === 'admin') {
+        } else if (resolvedUser.role === 'driver' || resolvedUser.role === 'attendant' || resolvedUser.role === 'admin') {
           await setPersistence(auth, browserSessionPersistence);
         }
       } catch (pErr) {
@@ -734,14 +734,14 @@ class StoreService {
 
   /**
    * Admin-Only Staff Account Provisioning
-   * Creates a driver or admin account without signing out the current admin.
+   * Creates a driver, attendant, or admin account without signing out the current admin.
    */
   public async createStaffUser(params: {
     name: string;
     email: string;
     phone: string;
     password: string;
-    role: 'driver' | 'admin';
+    role: 'driver' | 'attendant' | 'admin';
   }): Promise<User> {
     if (!this.currentUser || this.currentUser.role !== 'admin') {
       throw new Error('Unauthorized: Only administrators can create staff accounts.');
