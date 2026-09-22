@@ -15,6 +15,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { ElsaLogo } from './ElsaLogo';
+import { ThemeToggle } from './ThemeToggle';
 import { User, UserLocation, Address } from '../types';
 import {
   store,
@@ -30,9 +31,11 @@ import {
 
 interface TopLaundryBannerProps {
   currentUser: User | null;
+  darkTheme: boolean;
+  onToggleTheme: () => void;
 }
 
-export const TopLaundryBanner: React.FC<TopLaundryBannerProps> = ({ currentUser }) => {
+export const TopLaundryBanner: React.FC<TopLaundryBannerProps> = ({ currentUser, darkTheme, onToggleTheme }) => {
   const [currentLocation, setCurrentLocation] = useState<UserLocation>(store.getLocation());
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isDetectingGps, setIsDetectingGps] = useState(false);
@@ -248,19 +251,21 @@ export const TopLaundryBanner: React.FC<TopLaundryBannerProps> = ({ currentUser 
             </div>
           </div>
 
-          {/* Compact Location Chip */}
-          <button
-            id="banner-location-trigger-btn"
-            onClick={() => setIsLocationModalOpen(true)}
-            title={`Current Location: ${currentLocation.street ? `${currentLocation.street}, ` : ''}${currentLocation.area}, ${currentLocation.city} (Tap to change)`}
-            className="flex items-center gap-1.5 py-1 px-2 bg-white/10 hover:bg-white/15 active:bg-white/20 border border-white/20 rounded-xl text-left transition-all shrink-0 max-w-[125px] sm:max-w-[155px]"
-          >
-            <MapPin className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-            <span className="text-xs font-bold text-white truncate leading-tight">
-              {currentLocation.area || 'Nairobi'}
-            </span>
-            <ChevronDown className="w-3 h-3 text-cyan-200/70 shrink-0" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ThemeToggle dark={darkTheme} onToggle={onToggleTheme} />
+            <button
+              id="banner-location-trigger-btn"
+              onClick={() => setIsLocationModalOpen(true)}
+              title={`Current Location: ${currentLocation.street ? `${currentLocation.street}, ` : ''}${currentLocation.area}, ${currentLocation.city} (Tap to change)`}
+              className="flex items-center gap-1.5 py-1 px-2 bg-white/10 hover:bg-white/15 active:bg-white/20 border border-white/20 rounded-xl text-left transition-all max-w-[125px] sm:max-w-[155px]"
+            >
+              <MapPin className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+              <span className="text-xs font-bold text-white truncate leading-tight">
+                {currentLocation.area || 'Nairobi'}
+              </span>
+              <ChevronDown className="w-3 h-3 text-cyan-200/70 shrink-0" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -576,4 +581,3 @@ export const TopLaundryBanner: React.FC<TopLaundryBannerProps> = ({ currentUser 
     </>
   );
 };
-
