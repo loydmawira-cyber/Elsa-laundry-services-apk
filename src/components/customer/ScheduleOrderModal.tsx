@@ -8,7 +8,6 @@ import {
   Clock,
   Shirt,
   Sparkles,
-  CreditCard,
   CheckCircle2,
   AlertCircle,
   HelpCircle,
@@ -21,7 +20,7 @@ import {
   Info,
 } from 'lucide-react';
 import { store, DETERGENT_OPTIONS } from '../../services/store';
-import { User, OrderItem, PaymentMethod, LaundryCatalogItem } from '../../types';
+import { User, OrderItem, LaundryCatalogItem } from '../../types';
 
 interface ScheduleOrderModalProps {
   isOpen: boolean;
@@ -78,9 +77,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
   );
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa');
   const [mpesaConfirmationCode, setMpesaConfirmationCode] = useState('');
-  const [cardNumber, setCardNumber] = useState('•••• •••• •••• 4242');
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
   const [submitError, setSubmitError] = useState('');
 
@@ -119,7 +116,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
 
   const handleSubmitOrder = async () => {
     if (selectedItems.length === 0) return;
-    if (paymentMethod === 'mpesa' && !mpesaConfirmationCode.trim()) return;
+    if (!mpesaConfirmationCode.trim()) return;
 
     setSubmitError('');
     try {
@@ -131,8 +128,8 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
         dropoff_window: dropoffWindow,
         items: selectedItems as OrderItem[],
         detergent_choice: detergentChoice,
-        payment_method: paymentMethod,
-        mpesa_confirmation_code: paymentMethod === 'mpesa' ? mpesaConfirmationCode.trim() : undefined,
+        payment_method: 'mpesa',
+        mpesa_confirmation_code: mpesaConfirmationCode.trim(),
       });
 
       setCreatedOrderId(order.id);
@@ -471,55 +468,8 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 </div>
               </div>
 
-              {/* Payment Methods (M-Pesa, Card, Cash) */}
-              <div>
-                <span className="text-xs font-bold text-slate-700 block mb-2">Select Payment Method</span>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('mpesa')}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
-                      paymentMethod === 'mpesa'
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
-                      M
-                    </div>
-                    <span>M-Pesa</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('card')}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
-                      paymentMethod === 'card'
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4 text-indigo-600" />
-                    <span>Card</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('cash')}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all ${
-                      paymentMethod === 'cash'
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Layers className="w-4 h-4 text-amber-600" />
-                    <span>Pay at Pickup</span>
-                  </button>
-                </div>
-              </div>
-
-              {paymentMethod === 'mpesa' && (
-                <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-xs">
+              {/* M-Pesa Paybill payment */}
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-xs">
                   <div className="flex justify-between items-center text-emerald-900 font-semibold">
                     <span>Pay with M-Pesa</span>
                     <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
@@ -549,25 +499,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                     placeholder="e.g. QHX7ABC123"
                     className="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs font-medium text-slate-800"
                   />
-                </div>
-              )}
-
-              {paymentMethod === 'card' && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-                  <div className="flex justify-between items-center text-slate-700 font-semibold">
-                    <span>Card Number</span>
-                    <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      Stub Payment
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
-                  />
-                </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -676,7 +608,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 {submitError && <p className="text-[10px] text-red-600 font-semibold max-w-[190px] text-right">{submitError}</p>}
                 <button
                   type="button"
-                  disabled={paymentMethod === 'mpesa' && !mpesaConfirmationCode.trim()}
+                  disabled={!mpesaConfirmationCode.trim()}
                   onClick={handleSubmitOrder}
                   className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
                 >
