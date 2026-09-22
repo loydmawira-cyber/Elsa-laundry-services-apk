@@ -82,6 +82,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
   const [mpesaConfirmationCode, setMpesaConfirmationCode] = useState('');
   const [cardNumber, setCardNumber] = useState('•••• •••• •••• 4242');
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
+  const [submitError, setSubmitError] = useState('');
 
   if (!isOpen) return null;
 
@@ -120,20 +121,26 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
     if (selectedItems.length === 0) return;
     if (paymentMethod === 'mpesa' && !mpesaConfirmationCode.trim()) return;
 
-    const order = await store.createOrder({
-      customer: currentUser,
-      pickup_address: pickupAddress,
-      dropoff_address: sameAsPickup ? pickupAddress : dropoffAddress,
-      pickup_window: pickupWindow,
-      dropoff_window: dropoffWindow,
-      items: selectedItems as OrderItem[],
-      detergent_choice: detergentChoice,
-      payment_method: paymentMethod,
-      mpesa_confirmation_code: paymentMethod === 'mpesa' ? mpesaConfirmationCode.trim() : undefined,
-    });
+    setSubmitError('');
+    try {
+      const order = await store.createOrder({
+        customer: currentUser,
+        pickup_address: pickupAddress,
+        dropoff_address: sameAsPickup ? pickupAddress : dropoffAddress,
+        pickup_window: pickupWindow,
+        dropoff_window: dropoffWindow,
+        items: selectedItems as OrderItem[],
+        detergent_choice: detergentChoice,
+        payment_method: paymentMethod,
+        mpesa_confirmation_code: paymentMethod === 'mpesa' ? mpesaConfirmationCode.trim() : undefined,
+      });
 
-    setCreatedOrderId(order.id);
-    setStep('success');
+      setCreatedOrderId(order.id);
+      setStep('success');
+    } catch (error) {
+      console.error('Order submission failed:', error);
+      setSubmitError('The order could not be saved. Please check your connection and try again.');
+    }
   };
 
   const getItemIcon = (iconName: string) => {
@@ -665,15 +672,18 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
             )}
 
             {step === 'payment' && (
-              <button
-                type="button"
-                disabled={paymentMethod === 'mpesa' && !mpesaConfirmationCode.trim()}
-                onClick={handleSubmitOrder}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
-              >
+              <div className="flex flex-col items-end gap-2">
+                {submitError && <p className="text-[10px] text-red-600 font-semibold max-w-[190px] text-right">{submitError}</p>}
+                <button
+                  type="button"
+                  disabled={paymentMethod === 'mpesa' && !mpesaConfirmationCode.trim()}
+                  onClick={handleSubmitOrder}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
+                >
                   <span>Submit Payment KSh {totalAmount.toLocaleString()}</span>
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              </button>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
           </div>
         )}
