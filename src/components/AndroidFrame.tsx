@@ -15,6 +15,8 @@ interface AndroidFrameProps {
   title?: string;
   onBack?: () => void;
   activeTab?: string;
+  darkTheme: boolean;
+  onToggleTheme: () => void;
 }
 
 export const AndroidFrame: React.FC<AndroidFrameProps> = ({
@@ -23,6 +25,8 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
   onLogout,
   title,
   onBack,
+  darkTheme,
+  onToggleTheme,
 }) => {
   const [activeNotification, setActiveNotification] = useState<AppNotification | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -67,7 +71,7 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
   };
 
   return (
-    <div className={`min-h-screen ${currentUser ? 'bg-slate-100' : 'bg-slate-950'} flex flex-col items-center justify-start font-sans antialiased transition-colors`}>
+    <div className={`${darkTheme ? 'theme-dark' : ''} min-h-screen ${currentUser ? 'bg-slate-100' : 'bg-slate-950'} flex flex-col items-center justify-start font-sans antialiased transition-colors`}>
       {/* Main Responsive App Container */}
       <div className={`w-full max-w-md min-h-screen ${currentUser ? 'bg-slate-50 text-slate-900' : 'bg-blue-950 text-white'} relative shadow-2xl flex flex-col`}>
         {/* Push Notification Toast */}
@@ -156,7 +160,7 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
         )}
 
         {/* Global Top Banner: Laundry Name & User Current Location */}
-        {currentUser && <TopLaundryBanner currentUser={currentUser} />}
+        {currentUser && <TopLaundryBanner currentUser={currentUser} darkTheme={darkTheme} onToggleTheme={onToggleTheme} />}
 
         {/* Main App Content Viewport */}
         <main className={`flex-1 flex flex-col relative ${currentUser ? 'bg-slate-50 pb-24' : 'bg-blue-950 pb-2'}`}>
