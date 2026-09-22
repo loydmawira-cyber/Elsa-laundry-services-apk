@@ -17,10 +17,11 @@ import {
   Camera,
 } from 'lucide-react';
 import { Order, OrderStatus } from '../../types';
-import { store } from '../../services/store';
+import { store, DEFAULT_BUSINESS_SETTINGS } from '../../services/store';
 
 interface TrackOrderViewProps {
   orders: Order[];
+  businessSettings: typeof DEFAULT_BUSINESS_SETTINGS;
   selectedOrderId?: string;
   onSelectOrder: (orderId: string) => void;
   onOpenSchedule: () => void;
@@ -43,6 +44,7 @@ const STEP_DEFINITIONS: {
 
 export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
   orders,
+  businessSettings,
   selectedOrderId,
   onSelectOrder,
   onOpenSchedule,
@@ -387,11 +389,11 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
       <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-3xl flex items-center justify-between text-xs">
         <div>
           <span className="text-[10px] uppercase font-bold text-slate-400">Order Questions?</span>
-          <h4 className="font-bold text-slate-800">Elsie Kaburu (Customer Care)</h4>
-          <p className="text-[11px] text-blue-600 font-medium">+254 796 896 239</p>
+          <h4 className="font-bold text-slate-800">{businessSettings.businessName} Customer Care</h4>
+          <p className="text-[11px] text-blue-600 font-medium">{businessSettings.phone}</p>
         </div>
         <a
-          href="tel:+254796896239"
+          href={`tel:${businessSettings.phone.replace(/[^+\d]/g, '')}`}
           className="py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-colors shadow-xs"
         >
           <Phone className="w-3.5 h-3.5" />
