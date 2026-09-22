@@ -13,16 +13,17 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { ElsaLogo } from './ElsaLogo';
-import { store } from '../services/store';
+import { store, DEFAULT_BUSINESS_SETTINGS } from '../services/store';
 import { User } from '../types';
 import laundryHeroArt from '../assets/images/laundry_hero_art_1789521647694.jpg';
 import laundryPickupVan from '../assets/images/laundry_pickup_van_1789521662496.jpg';
 
 interface LoginViewProps {
   onLoginSuccess: (user: User) => void;
+  businessSettings?: typeof DEFAULT_BUSINESS_SETTINGS;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, businessSettings = DEFAULT_BUSINESS_SETTINGS }) => {
   const [mode, setMode] = useState<'signin' | 'register' | 'forgot'>('signin');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -129,11 +130,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           Elsa Laundry Services
         </h1>
         <p className="text-xs text-cyan-200 font-medium mt-0.5">
-          For a spotless clean • Pickup & Delivery in Nairobi
+          For a spotless clean • Pickup & Delivery
         </p>
         <div className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-800/60 border border-cyan-400/30 text-[11px] text-cyan-200 backdrop-blur-sm shadow-md">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Open 7 Days • Kilimani, Westlands, Lavington</span>
+          <span>Open • {businessSettings.facilityAddress}</span>
         </div>
       </div>
 
@@ -531,5 +532,4 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     </div>
   );
 };
-
 
