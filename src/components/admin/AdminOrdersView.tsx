@@ -22,12 +22,14 @@ interface AdminOrdersViewProps {
   orders: Order[];
   users: UserType[];
   initialSelectedOrderId?: string | null;
+  mode?: 'admin' | 'attendant';
 }
 
 export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
   orders,
   users,
   initialSelectedOrderId,
+  mode = 'admin',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -54,7 +56,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
     }
   }, [orders]);
 
-  const drivers = users.filter((u) => u.role === 'driver');
+  const pickupStaff = users.filter((u) => u.role === 'driver' || u.role === 'attendant');
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -118,6 +120,11 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
 
   return (
     <div className="flex-1 p-4 space-y-4 pb-20 overflow-y-auto">
+      {mode === 'attendant' && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-900">
+          <strong>Attendant Operations</strong><br />Manage pickups, sorting, laundry status, final prices, and payment confirmations. Business settings, sales, and staff management are restricted.
+        </div>
+      )}
       {/* Search & Status Filter Controls */}
       <div className="space-y-2">
         <div className="relative">
@@ -260,7 +267,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-2">
                 <label className="font-bold text-blue-950 flex items-center gap-1.5">
                   <Truck className="w-4 h-4 text-blue-600" />
-                  <span>Assign or Reassign Driver</span>
+                  <span>Assign or Reassign Pickup Staff</span>
                 </label>
                 <select
                   value={selectedOrder.driver_id || ''}
@@ -270,14 +277,14 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                   className="w-full p-2.5 bg-white border border-blue-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">-- Unassigned --</option>
-                  {drivers.map((d) => (
+                  {pickupStaff.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name} ({d.phone})
+                      {d.name} ({d.role === 'attendant' ? 'Attendant' : 'Driver'}) — {d.phone}
                     </option>
                   ))}
                 </select>
                 <p className="text-[11px] text-blue-700">
-                  Changing driver updates today's route dispatch immediately.
+                  Select the staff member responsible for picking up this order. This may be a driver or a laundry attendant.
                 </p>
               </div>
 
@@ -483,8 +490,8 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                     <span>KSh {Math.round(selectedOrder.total_amount).toLocaleString()}</span>
                   </div>
                   
-                  {/* Automated 5% Revenue Share Cut */}
-                  <div className="p-2.5 bg-blue-50 border border-blue-200/80 rounded-xl space-y-1 text-[11px]">
+                  {/* Admin-only financial reporting */}
+                  {mode === 'admin' && <div className="p-2.5 bg-blue-50 border border-blue-200/80 rounded-xl space-y-1 text-[11px]">
                     <div className="flex justify-between text-blue-900 font-extrabold">
                       <span className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
@@ -505,7 +512,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                         Disbursement Ref: {selectedOrder.payout_reference} • Status: {selectedOrder.payout_status || 'disbursed'}
                       </p>
                     )}
-                  </div>
+                  </div>}
 
                   <div className="flex justify-between font-extrabold text-sm text-slate-900 pt-1">
                     <span>Gross Total</span>
