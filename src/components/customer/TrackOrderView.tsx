@@ -49,6 +49,7 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
   onSelectOrder,
   onOpenSchedule,
 }) => {
+  const [mpesaCode, setMpesaCode] = useState('');
   // Find currently displayed order or default to the most active
   const activeOrders = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
   const targetOrder =
@@ -202,6 +203,24 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
       </div>
 
       {/* Payment confirmation status */}
+      {targetOrder.pricing_status === 'awaiting_customer_approval' && (
+        <div className="rounded-3xl p-4 border border-indigo-200 bg-indigo-50 shadow-xs space-y-3">
+          <div>
+            <h3 className="text-xs font-extrabold text-indigo-950">Final price ready for your approval</h3>
+            <p className="text-[11px] text-indigo-800 mt-1">The laundry has been sorted. Review the actual quantities below, then approve before paying.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[11px] text-indigo-950">
+            <span>General laundry: <strong>{targetOrder.final_general_kg || 0} kg</strong></span>
+            <span>Ironing: <strong>{targetOrder.final_ironing ? 'Yes' : 'No'}</strong></span>
+          </div>
+          {targetOrder.sorting_notes && <p className="text-[11px] text-indigo-800">Notes: {targetOrder.sorting_notes}</p>}
+          <div className="flex items-center justify-between border-t border-indigo-200 pt-2 font-extrabold text-indigo-950">
+            <span>Final total</span><span>KSh {Math.round(targetOrder.total_amount).toLocaleString()}</span>
+          </div>
+          <button type="button" onClick={() => store.approveFinalPrice(targetOrder.id)} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold">Approve Final Price</button>
+        </div>
+      )}
+
       <div className={`rounded-3xl p-4 border shadow-xs ${targetOrder.payment_status === 'paid' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
         <div className="flex items-start gap-3">
           {targetOrder.payment_status === 'paid' ? (
@@ -219,8 +238,16 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
             <p className={`text-[11px] mt-1 ${targetOrder.payment_status === 'paid' ? 'text-emerald-800' : 'text-amber-800'}`}>
               {targetOrder.payment_status === 'paid'
                 ? 'Your payment was successfully confirmed by Elsa Laundry Services.'
-                : 'Your M-Pesa payment code was submitted. The order will update here after an admin verifies it.'}
+                : targetOrder.pricing_status !== 'approved'
+                ? 'Payment opens after Elsa Laundry sends and you approve the final sorted price.'
+                : 'Pay the approved amount to Paybill 522533, Account 7986811, then enter your M-Pesa code below.'}
             </p>
+            {targetOrder.pricing_status === 'approved' && targetOrder.payment_status !== 'paid' && !targetOrder.mpesa_confirmation_code && (
+              <div className="mt-3 space-y-2">
+                <input value={mpesaCode} onChange={(e) => setMpesaCode(e.target.value.toUpperCase())} placeholder="M-Pesa confirmation code" className="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs" />
+                <button type="button" disabled={!mpesaCode.trim()} onClick={() => { store.submitPaymentCode(targetOrder.id, mpesaCode); setMpesaCode(''); }} className="w-full py-2 bg-emerald-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold">Submit Payment Confirmation</button>
+              </div>
+            )}
             {targetOrder.mpesa_confirmation_code && (
               <p className="text-[10px] text-slate-600 mt-1 font-semibold">M-Pesa code: {targetOrder.mpesa_confirmation_code}</p>
             )}
