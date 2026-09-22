@@ -859,6 +859,7 @@ class StoreService {
     items: OrderItem[];
     detergent_choice: string;
     payment_method: PaymentMethod;
+    mpesa_confirmation_code?: string;
   }): Promise<Order> {
     const subtotal = params.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const delivery_fee = 250;
@@ -880,8 +881,10 @@ class StoreService {
       pickup_window: params.pickup_window,
       dropoff_window: params.dropoff_window,
       status: 'scheduled',
-      payment_status: 'paid',
+      payment_status: 'pending',
       payment_method: params.payment_method,
+      mpesa_confirmation_code: params.mpesa_confirmation_code || undefined,
+      payment_submitted_at: new Date().toISOString(),
       detergent_choice: params.detergent_choice,
       items: params.items.map((it, idx) => ({ ...it, id: `oi-${orderId}-${idx + 1}`, order_id: orderId })),
       subtotal,
@@ -909,7 +912,7 @@ class StoreService {
     // Notifications
     this.addNotification({
       title: 'Pickup Scheduled!',
-      body: `Your order #${orderId} is confirmed. Pickup window: ${params.pickup_window}.`,
+      body: `Order #${orderId} received. Payment is awaiting confirmation. Pickup window: ${params.pickup_window}.`,
       order_id: orderId,
       target_role: 'customer',
       user_id: params.customer.id,
@@ -924,6 +927,45 @@ class StoreService {
 
     this.notify();
     return newOrder;
+  }
+
+  public async updatePaymentStatus(
+    orderId: string,
+    paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded'
+  ) {
+    const orderIndex = this.orders.findIndex((o) => o.id === orderId);
+    if (orderIndex === -1) return;
+
+    const order = {
+      ...this.orders[orderIndex],
+      payment_status: paymentStatus,
+      paid_at: paymentStatus === 'paid' ? new Date().toISOString() : undefined,
+      updated_at: new Date().toISOString(),
+    };
+
+    this.orders[orderIndex] = order;
+    this.notify();
+
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        payment_status: order.payment_status,
+        paid_at: order.paid_at || null,
+        updated_at: order.updated_at,
+      });
+    } catch (err) {
+      console.warn('updatePaymentStatus Firestore error:', err);
+    }
+
+    this.addNotification({
+      title: `Payment ${paymentStatus === 'paid' ? 'Confirmed' : 'Updated'} for #${order.id}`,
+      body:
+        paymentStatus === 'paid'
+          ? `Payment of ${formatKES(order.total_amount)} was confirmed by Elsa Laundry Services.`
+          : `Payment status for order #${order.id} is ${paymentStatus}.`,
+      order_id: order.id,
+      target_role: 'customer',
+      user_id: order.customer_id,
+    });
   }
 
   public async updateOrderStatus(
