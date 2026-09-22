@@ -17,11 +17,13 @@ import {
 } from 'lucide-react';
 import { ElsaLogo } from '../ElsaLogo';
 import { User, Order, LaundryCatalogItem } from '../../types';
+import { DEFAULT_BUSINESS_SETTINGS } from '../../services/store';
 
 interface CustomerHomeProps {
   currentUser: User;
   orders: Order[];
   catalog: LaundryCatalogItem[];
+  businessSettings: typeof DEFAULT_BUSINESS_SETTINGS;
   onOpenSchedule: () => void;
   onNavigateToTrack: (orderId?: string) => void;
   onReorder: (order: Order) => void;
@@ -31,6 +33,7 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
   currentUser,
   orders,
   catalog,
+  businessSettings,
   onOpenSchedule,
   onNavigateToTrack,
   onReorder,
@@ -219,12 +222,12 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
             <span className="text-[10px] uppercase font-bold tracking-wider text-blue-300">Customer Helpline</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
           </div>
-          <p className="text-xs font-bold text-white">Elsie Kaburu (Owner)</p>
-          <p className="text-[11px] text-blue-200">+254 796 896 239</p>
+          <p className="text-xs font-bold text-white">{businessSettings.businessName} Support</p>
+          <p className="text-[11px] text-blue-200">{businessSettings.phone}</p>
         </div>
         <div className="flex items-center gap-2">
           <a
-            href="tel:+254796896239"
+            href={`tel:${businessSettings.phone.replace(/[^+\d]/g, '')}`}
             className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-sm flex items-center gap-1 text-xs font-bold transition-all"
             title="Call Customer Service"
           >
