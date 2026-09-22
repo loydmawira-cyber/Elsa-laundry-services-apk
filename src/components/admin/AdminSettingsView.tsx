@@ -16,13 +16,16 @@ import {
 } from 'lucide-react';
 import { store, DEFAULT_BUSINESS_SETTINGS } from '../../services/store';
 import { LaundryCatalogItem } from '../../types';
+import { User } from '../../types';
+import { PinSettings } from '../PinSecurity';
 
 interface AdminSettingsViewProps {
   catalog: LaundryCatalogItem[];
   businessSettings: typeof DEFAULT_BUSINESS_SETTINGS;
+  currentUser: User;
 }
 
-export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, businessSettings: business }) => {
+export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, businessSettings: business, currentUser }) => {
 
   // Editing state for pricing
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
@@ -316,6 +319,8 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, b
           </div>
         </form>
       </div>
+
+      <PinSettings user={currentUser} />
 
       {/* Modal for Adding New Laundry Service Item */}
       {showAddItemModal && (
