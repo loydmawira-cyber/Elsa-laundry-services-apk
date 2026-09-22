@@ -74,6 +74,12 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
     }
   };
 
+  const handleMarkPaymentPaid = (orderId: string) => {
+    store.updatePaymentStatus(orderId, 'paid');
+    const updated = store.getOrderById(orderId);
+    if (updated) setSelectedOrder(updated);
+  };
+
   return (
     <div className="flex-1 p-4 space-y-4 pb-20 overflow-y-auto">
       {/* Search & Status Filter Controls */}
@@ -170,6 +176,9 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                     {order.driver_name || '⚠️ Unassigned'}
                   </p>
                 </div>
+              </div>
+              <div className={`pt-1 border-t border-slate-100 text-[10px] font-bold ${order.payment_status === 'paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                Payment: {order.payment_status === 'paid' ? 'Paid' : 'Awaiting confirmation'}
               </div>
             </div>
           ))
@@ -332,6 +341,39 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                     <span>Dropoff: {selectedOrder.dropoff_address}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* PAYMENT CONFIRMATION */}
+              <div className={`p-4 rounded-2xl border space-y-2 ${selectedOrder.payment_status === 'paid' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                <div className="flex items-center justify-between">
+                  <label className={`font-bold flex items-center gap-1.5 ${selectedOrder.payment_status === 'paid' ? 'text-emerald-950' : 'text-amber-950'}`}>
+                    <DollarSign className="w-4 h-4" />
+                    <span>Payment Confirmation</span>
+                  </label>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${selectedOrder.payment_status === 'paid' ? 'bg-emerald-200 text-emerald-900' : 'bg-amber-200 text-amber-900'}`}>
+                    {selectedOrder.payment_status === 'paid' ? 'PAID' : 'AWAITING CONFIRMATION'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <span className="block text-slate-500 font-semibold">AMOUNT PAID</span>
+                    <span className="font-extrabold text-slate-900">KSh {Math.round(selectedOrder.total_amount).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="block text-slate-500 font-semibold">M-PESA CODE</span>
+                    <span className="font-extrabold text-slate-900">{selectedOrder.mpesa_confirmation_code || 'Not provided'}</span>
+                  </div>
+                </div>
+                {selectedOrder.payment_status !== 'paid' && (
+                  <button
+                    type="button"
+                    onClick={() => handleMarkPaymentPaid(selectedOrder.id)}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Mark as paid
+                  </button>
+                )}
               </div>
 
               {/* Items in Order */}
