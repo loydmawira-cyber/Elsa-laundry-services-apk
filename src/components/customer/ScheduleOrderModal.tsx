@@ -75,8 +75,9 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
   if (!isOpen) return null;
 
   // Price calculations in KES
-  const subtotal = calculateLaundryPrice({ generalKg, ironing: ironingRequested, specialItems });
-  const deliveryFee = store.getBusinessSettings().deliveryFee;
+  const liveBusinessSettings = store.getBusinessSettings();
+  const subtotal = calculateLaundryPrice({ generalKg, ironing: ironingRequested, specialItems, settings: liveBusinessSettings });
+  const deliveryFee = liveBusinessSettings.deliveryFee;
   const totalAmount = Math.round(subtotal + deliveryFee);
 
   const handleSubmitOrder = async () => {
@@ -176,7 +177,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                   Include ironing (KSh 130 per kg)
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(SPECIAL_ITEM_LABELS).map(([key, label]) => (
+                  {Object.entries(liveBusinessSettings.specialItemLabels || SPECIAL_ITEM_LABELS).map(([key, label]) => (
                     <label key={key} className="text-[10px] font-bold text-blue-950">
                       {label}
                       <input
