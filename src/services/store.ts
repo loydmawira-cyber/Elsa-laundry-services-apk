@@ -90,6 +90,48 @@ export const DEFAULT_BUSINESS_SETTINGS = {
   email: 'Elsierichard76@gmail.com',
   hours: 'Mon - Sat: 7:00 AM - 8:00 PM | Sun: 9:00 AM - 4:00 PM',
   deliveryFee: 250,
+  generalLaundryRate: 100,
+  ironingRate: 130,
+  minimumLaundryCharge: 500,
+  specialItemRates: {
+    shoes: 100,
+    duvet_colored: 600,
+    duvet_white: 700,
+    suit: 400,
+    wedding_gown: 2500,
+    graduation_gown: 400,
+    curtains: 150,
+    jacket: 100,
+  },
+};
+
+export const SPECIAL_ITEM_LABELS: Record<string, string> = {
+  shoes: 'Shoes (pair)',
+  duvet_colored: 'Duvet (non-white)',
+  duvet_white: 'White duvet',
+  suit: 'Suit',
+  wedding_gown: 'Wedding gown',
+  graduation_gown: 'Graduation gown',
+  curtains: 'Curtains (kg)',
+  jacket: 'Trench coat / jacket',
+};
+
+export const calculateLaundryPrice = (params: {
+  generalKg: number;
+  ironing: boolean;
+  specialItems: Record<string, number>;
+  settings?: typeof DEFAULT_BUSINESS_SETTINGS;
+}) => {
+  const settings = params.settings || DEFAULT_BUSINESS_SETTINGS;
+  const generalRate = params.ironing ? settings.ironingRate : settings.generalLaundryRate;
+  const generalTotal = params.generalKg > 0
+    ? Math.max(settings.minimumLaundryCharge, params.generalKg * generalRate)
+    : 0;
+  const specialTotal = Object.entries(params.specialItems).reduce(
+    (sum, [key, quantity]) => sum + (settings.specialItemRates[key as keyof typeof settings.specialItemRates] || 0) * quantity,
+    0
+  );
+  return Math.round(generalTotal + specialTotal);
 };
 
 export const LAUNDRY_OWNER_CONTACT = {
@@ -253,6 +295,8 @@ class StoreService {
       const list: Order[] = snapshot.docs.map((docSnap: any) => ({
         ...docSnap.data(),
         id: docSnap.id,
+        pricing_status: docSnap.data().pricing_status || 'approved',
+        special_item_quantities: docSnap.data().special_item_quantities || {},
       })) as Order[];
       list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       this.orders = list;
@@ -882,11 +926,21 @@ class StoreService {
     dropoff_window: string;
     items: OrderItem[];
     detergent_choice: string;
-    payment_method: PaymentMethod;
+    payment_method?: PaymentMethod;
     mpesa_confirmation_code?: string;
+    estimated_general_kg?: number;
+    ironing_requested?: boolean;
+    special_item_quantities?: Record<string, number>;
   }): Promise<Order> {
     const subtotal = params.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const delivery_fee = 250;
+    const delivery_fee = this.businessSettings.deliveryFee;
+    const estimate = calculateLaundryPrice({
+      generalKg: params.estimated_general_kg || 0,
+      ironing: Boolean(params.ironing_requested),
+      specialItems: params.special_item_quantities || {},
+      settings: this.businessSettings,
+    });
+    const pricedSubtotal = estimate || subtotal;
     const total_amount = Math.round(subtotal + delivery_fee);
     const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -906,20 +960,23 @@ class StoreService {
       dropoff_window: params.dropoff_window,
       status: 'scheduled',
       payment_status: 'pending',
-      payment_method: params.payment_method,
+      payment_method: params.payment_method || 'mpesa',
       mpesa_confirmation_code: params.mpesa_confirmation_code || undefined,
-      payment_submitted_at: new Date().toISOString(),
       detergent_choice: params.detergent_choice,
       items: params.items.map((it, idx) => ({ ...it, id: `oi-${orderId}-${idx + 1}`, order_id: orderId })),
-      subtotal,
+      subtotal: pricedSubtotal,
       delivery_fee,
-      total_amount,
+      total_amount: Math.round(pricedSubtotal + delivery_fee),
+      pricing_status: 'estimated',
+      estimated_general_kg: params.estimated_general_kg || 0,
+      ironing_requested: Boolean(params.ironing_requested),
+      special_item_quantities: params.special_item_quantities || {},
       created_at: new Date().toISOString(),
       status_history: [
         {
           status: 'scheduled',
           timestamp: new Date().toISOString(),
-          note: 'Pickup scheduled by customer with Elsa Laundry Services',
+          note: 'Order request received. Final price will be calculated after laundry sorting.',
         },
       ],
     };
@@ -946,7 +1003,7 @@ class StoreService {
     // Notifications
     this.addNotification({
       title: 'Pickup Scheduled!',
-      body: `Order #${orderId} received. Payment is awaiting confirmation. Pickup window: ${params.pickup_window}.`,
+      body: `Order #${orderId} received. Elsa Laundry will sort and confirm the final price. Pickup window: ${params.pickup_window}.`,
       order_id: orderId,
       target_role: 'customer',
       user_id: params.customer.id,
@@ -954,7 +1011,7 @@ class StoreService {
 
     this.addNotification({
       title: 'New Order Received',
-      body: `Order #${orderId} placed by ${params.customer.name} (${formatKES(total_amount)}). Needs pickup assignment.`,
+      body: `Order #${orderId} placed by ${params.customer.name}. Estimated total: ${formatKES(newOrder.total_amount)}. Needs sorting and final pricing.`,
       order_id: orderId,
       target_role: 'admin',
     });
@@ -1000,6 +1057,93 @@ class StoreService {
       target_role: 'customer',
       user_id: order.customer_id,
     });
+  }
+
+  public async updateFinalPricing(orderId: string, pricing: {
+    final_general_kg: number;
+    final_ironing: boolean;
+    special_item_quantities: Record<string, number>;
+    sorting_notes?: string;
+  }) {
+    const index = this.orders.findIndex((order) => order.id === orderId);
+    if (index === -1) return;
+    const order = this.orders[index];
+    const subtotal = calculateLaundryPrice({
+      generalKg: pricing.final_general_kg,
+      ironing: pricing.final_ironing,
+      specialItems: pricing.special_item_quantities,
+      settings: this.businessSettings,
+    });
+    const updated = {
+      ...order,
+      subtotal,
+      total_amount: Math.round(subtotal + order.delivery_fee),
+      final_general_kg: pricing.final_general_kg,
+      final_ironing: pricing.final_ironing,
+      special_item_quantities: pricing.special_item_quantities,
+      sorting_notes: pricing.sorting_notes,
+      pricing_status: 'awaiting_customer_approval' as const,
+      updated_at: new Date().toISOString(),
+    };
+    this.orders[index] = updated;
+    this.notify();
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        subtotal: updated.subtotal,
+        total_amount: updated.total_amount,
+        final_general_kg: updated.final_general_kg,
+        final_ironing: updated.final_ironing,
+        special_item_quantities: updated.special_item_quantities,
+        sorting_notes: updated.sorting_notes || null,
+        pricing_status: updated.pricing_status,
+        updated_at: updated.updated_at,
+      });
+    } catch (err) {
+      console.warn('updateFinalPricing Firestore error:', err);
+    }
+    this.addNotification({
+      title: `Final price ready for #${orderId}`,
+      body: `Your sorted laundry total is ${formatKES(updated.total_amount)}. Please review and approve it before payment.`,
+      order_id: orderId,
+      target_role: 'customer',
+      user_id: order.customer_id,
+    });
+  }
+
+  public async approveFinalPrice(orderId: string) {
+    const index = this.orders.findIndex((order) => order.id === orderId);
+    if (index === -1) return;
+    const order = this.orders[index];
+    const updated = { ...order, pricing_status: 'approved' as const, customer_price_approved_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    this.orders[index] = updated;
+    this.notify();
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        pricing_status: updated.pricing_status,
+        customer_price_approved_at: updated.customer_price_approved_at,
+        updated_at: updated.updated_at,
+      });
+    } catch (err) {
+      console.warn('approveFinalPrice Firestore error:', err);
+    }
+  }
+
+  public async submitPaymentCode(orderId: string, code: string) {
+    const index = this.orders.findIndex((order) => order.id === orderId);
+    if (index === -1 || !code.trim()) return;
+    const updated = { ...this.orders[index], mpesa_confirmation_code: code.trim().toUpperCase(), payment_submitted_at: new Date().toISOString(), payment_status: 'pending' as const, updated_at: new Date().toISOString() };
+    this.orders[index] = updated;
+    this.notify();
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        mpesa_confirmation_code: updated.mpesa_confirmation_code,
+        payment_submitted_at: updated.payment_submitted_at,
+        payment_status: updated.payment_status,
+        updated_at: updated.updated_at,
+      });
+    } catch (err) {
+      console.warn('submitPaymentCode Firestore error:', err);
+    }
   }
 
   public async updateOrderStatus(
