@@ -44,6 +44,9 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, b
   const [businessEmail, setBusinessEmail] = useState(business.email);
   const [operatingHours, setOperatingHours] = useState(business.hours);
   const [deliveryFee, setDeliveryFee] = useState(business.deliveryFee);
+  const [generalLaundryRate, setGeneralLaundryRate] = useState(business.generalLaundryRate);
+  const [ironingRate, setIroningRate] = useState(business.ironingRate);
+  const [minimumLaundryCharge, setMinimumLaundryCharge] = useState(business.minimumLaundryCharge);
   const [isSavedNotice, setIsSavedNotice] = useState(false);
 
   // Keep the location/contact form in sync if business settings change
@@ -55,6 +58,9 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, b
     setBusinessEmail(business.email);
     setOperatingHours(business.hours);
     setDeliveryFee(business.deliveryFee);
+    setGeneralLaundryRate(business.generalLaundryRate);
+    setIroningRate(business.ironingRate);
+    setMinimumLaundryCharge(business.minimumLaundryCharge);
   }, [business]);
 
   const handleStartEditPrice = (item: LaundryCatalogItem) => {
@@ -92,6 +98,9 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, b
       email: businessEmail,
       hours: operatingHours,
       deliveryFee: Number(deliveryFee),
+      generalLaundryRate: Number(generalLaundryRate),
+      ironingRate: Number(ironingRate),
+      minimumLaundryCharge: Number(minimumLaundryCharge),
     });
     setIsSavedNotice(true);
     setTimeout(() => setIsSavedNotice(false), 3000);
@@ -196,6 +205,19 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, b
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 space-y-3">
+        <div>
+          <h3 className="text-sm font-extrabold text-slate-900">Weight-Based Laundry Rates</h3>
+          <p className="text-[11px] text-slate-500">These rates calculate estimates and final sorted prices.</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <label className="text-[10px] font-bold text-slate-700">General / kg<input type="number" value={generalLaundryRate} onChange={(e) => setGeneralLaundryRate(Number(e.target.value))} className="mt-1 w-full p-2 border border-slate-200 rounded-lg text-xs" /></label>
+          <label className="text-[10px] font-bold text-slate-700">Ironing / kg<input type="number" value={ironingRate} onChange={(e) => setIroningRate(Number(e.target.value))} className="mt-1 w-full p-2 border border-slate-200 rounded-lg text-xs" /></label>
+          <label className="text-[10px] font-bold text-slate-700">Minimum<input type="number" value={minimumLaundryCharge} onChange={(e) => setMinimumLaundryCharge(Number(e.target.value))} className="mt-1 w-full p-2 border border-slate-200 rounded-lg text-xs" /></label>
+        </div>
+        <p className="text-[10px] text-slate-500">Special-item rates are applied separately during sorting: shoes, duvets, suits, gowns, curtains, and jackets.</p>
       </div>
 
       {/* 2. BUSINESS LOCATION & FACILITY SETTINGS */}
