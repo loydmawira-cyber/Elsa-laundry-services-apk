@@ -62,6 +62,7 @@ export default function App() {
     'dashboard' | 'orders' | 'inventory' | 'staff' | 'customers' | 'settings'
   >('dashboard');
   const [adminSelectedOrderId, setAdminSelectedOrderId] = useState<string | null>(null);
+  const [attendantTab, setAttendantTab] = useState<'route' | 'orders'>('route');
 
   // Sync state on store changes
   useEffect(() => {
@@ -289,12 +290,15 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {currentUser && !isPinLocked && currentUser.role === 'attendant' && (
         <div className="flex-1 flex flex-col h-full">
-          <AdminOrdersView
-            orders={orders}
-            users={allUsers}
-            initialSelectedOrderId={null}
-            mode="attendant"
-          />
+          <div className="flex items-center gap-2 px-4 pt-3">
+            <button type="button" onClick={() => setAttendantTab('route')} className={`flex-1 py-2 rounded-xl text-xs font-bold ${attendantTab === 'route' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>Pickup & Delivery Route</button>
+            <button type="button" onClick={() => setAttendantTab('orders')} className={`flex-1 py-2 rounded-xl text-xs font-bold ${attendantTab === 'orders' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>Sorting & Payments</button>
+          </div>
+          {attendantTab === 'route' ? (
+            <DriverRouteView currentUser={currentUser} orders={orders} onLogout={handleLogout} />
+          ) : (
+            <AdminOrdersView orders={orders} users={allUsers} initialSelectedOrderId={null} mode="attendant" />
+          )}
         </div>
       )}
 
