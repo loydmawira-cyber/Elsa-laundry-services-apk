@@ -93,6 +93,10 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
 
   const handleSaveFinalPricing = async () => {
     if (!selectedOrder) return;
+    if (selectedOrder.pricing_status !== 'estimated') {
+      setPricingMessage(selectedOrder.pricing_status === 'approved' ? 'Final price confirmed by customer.' : 'Final price already sent to customer.');
+      return;
+    }
     if (finalKg <= 0 && Object.values(sortedItems).every((quantity) => Number(quantity) <= 0)) {
       setPricingMessage('Enter the sorted weight or at least one special item quantity first.');
       return;
@@ -415,8 +419,13 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                   ))}
                 </div>
                 <textarea value={sortingNotes} onChange={(e) => setSortingNotes(e.target.value)} placeholder="Sorting notes for customer (optional)" className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs" rows={2} />
-                <button type="button" onClick={handleSaveFinalPricing} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs">
-                  Calculate & Send Final Price
+                <button
+                  type="button"
+                  disabled={selectedOrder.pricing_status !== 'estimated'}
+                  onClick={handleSaveFinalPricing}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs"
+                >
+                  {selectedOrder.pricing_status === 'approved' ? 'Final Price Confirmed' : selectedOrder.pricing_status === 'awaiting_customer_approval' ? 'Final Price Sent' : 'Calculate & Send Final Price'}
                 </button>
                 {pricingMessage && <p className={`text-[11px] font-bold ${pricingMessage.startsWith('Final price sent') ? 'text-emerald-700' : 'text-rose-700'}`}>{pricingMessage}</p>}
               </div>
