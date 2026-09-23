@@ -150,9 +150,9 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
             </div>
             <div>
               <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
-                Driver: {currentUser.name}
+                Pickup Staff: {currentUser.name}
               </span>
-              <h2 className="text-base font-extrabold text-white">Today's Route Schedule</h2>
+              <h2 className="text-base font-extrabold text-white">Today's Pickup & Delivery Route</h2>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
