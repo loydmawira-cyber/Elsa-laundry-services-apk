@@ -283,6 +283,14 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
                     <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 animate-pulse">
                       🚚 Out for Delivery
                     </span>
+                  ) : stop.order.status === 'scheduled' ? (
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 animate-pulse">
+                      Pickup Needed
+                    </span>
+                  ) : stop.order.status === 'ready' ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 animate-pulse">
+                      Delivery Needed
+                    </span>
                   ) : (
                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
                       Next in Queue
