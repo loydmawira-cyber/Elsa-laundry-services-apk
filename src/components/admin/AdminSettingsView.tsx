@@ -36,6 +36,10 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, b
   const [generalLaundryRate, setGeneralLaundryRate] = useState(business.generalLaundryRate);
   const [ironingRate, setIroningRate] = useState(business.ironingRate);
   const [minimumLaundryCharge, setMinimumLaundryCharge] = useState(business.minimumLaundryCharge);
+  const [specialRates, setSpecialRates] = useState<Record<string, number>>(business.specialItemRates || {});
+  const [specialLabels, setSpecialLabels] = useState<Record<string, string>>(business.specialItemLabels || {});
+  const [newSpecialLabel, setNewSpecialLabel] = useState('');
+  const [newSpecialRate, setNewSpecialRate] = useState(0);
   const [isSavedNotice, setIsSavedNotice] = useState(false);
 
   // Keep the location/contact form in sync if business settings change
@@ -50,6 +54,8 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, b
     setGeneralLaundryRate(business.generalLaundryRate);
     setIroningRate(business.ironingRate);
     setMinimumLaundryCharge(business.minimumLaundryCharge);
+    setSpecialRates(business.specialItemRates || {});
+    setSpecialLabels(business.specialItemLabels || {});
   }, [business]);
 
   const handleSaveBusinessSettings = (e: React.FormEvent) => {
@@ -63,9 +69,42 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, b
       generalLaundryRate: Number(generalLaundryRate),
       ironingRate: Number(ironingRate),
       minimumLaundryCharge: Number(minimumLaundryCharge),
+      specialItemRates: specialRates,
+      specialItemLabels: specialLabels,
     });
     setIsSavedNotice(true);
     setTimeout(() => setIsSavedNotice(false), 3000);
+  };
+
+  const handleSavePricing = () => {
+    store.updateBusinessSettings({
+      generalLaundryRate: Number(generalLaundryRate),
+      ironingRate: Number(ironingRate),
+      minimumLaundryCharge: Number(minimumLaundryCharge),
+      specialItemRates: specialRates,
+      specialItemLabels: specialLabels,
+    });
+    setIsSavedNotice(true);
+    setTimeout(() => setIsSavedNotice(false), 3000);
+  };
+
+  const handleDeleteSpecialService = (key: string) => {
+    const nextRates = { ...specialRates };
+    const nextLabels = { ...specialLabels };
+    delete nextRates[key];
+    delete nextLabels[key];
+    setSpecialRates(nextRates);
+    setSpecialLabels(nextLabels);
+  };
+
+  const handleAddSpecialService = () => {
+    const label = newSpecialLabel.trim();
+    if (!label || newSpecialRate <= 0) return;
+    const key = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || `special_${Date.now()}`;
+    setSpecialLabels((prev) => ({ ...prev, [key]: label }));
+    setSpecialRates((prev) => ({ ...prev, [key]: Number(newSpecialRate) }));
+    setNewSpecialLabel('');
+    setNewSpecialRate(0);
   };
 
   return (
@@ -115,6 +154,31 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ catalog, b
           <label className="text-[10px] font-bold text-slate-700">Minimum<input type="number" value={minimumLaundryCharge} onChange={(e) => setMinimumLaundryCharge(Number(e.target.value))} className="mt-1 w-full p-2 border border-slate-200 rounded-lg text-xs" /></label>
         </div>
         <p className="text-[10px] text-slate-500">Special-item rates are applied separately during sorting: shoes, duvets, suits, gowns, curtains, and jackets.</p>
+      </div>
+
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900">Special Services & Prices</h3>
+            <p className="text-[11px] text-slate-500">These prices appear on Customer Home and are used after sorting.</p>
+          </div>
+          <button type="button" onClick={handleSavePricing} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold">Save Prices</button>
+        </div>
+        <div className="space-y-2">
+          {Object.entries(specialLabels).map(([key, label]) => (
+            <div key={key} className="grid grid-cols-[1fr_90px_32px] gap-2 items-center">
+              <input value={label} onChange={(e) => setSpecialLabels((prev) => ({ ...prev, [key]: e.target.value }))} className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold" />
+              <input type="number" min="0" value={specialRates[key] ?? ''} onChange={(e) => setSpecialRates((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value)) }))} className="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold" />
+              <button type="button" onClick={() => handleDeleteSpecialService(key)} title="Delete service" className="p-2 rounded-lg text-rose-600 hover:bg-rose-50"><span aria-hidden="true">×</span></button>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-[1fr_90px_auto] gap-2 pt-2 border-t border-slate-100">
+          <input value={newSpecialLabel} onChange={(e) => setNewSpecialLabel(e.target.value)} placeholder="New service name" className="p-2 border border-slate-200 rounded-lg text-xs" />
+          <input type="number" min="1" value={newSpecialRate || ''} onChange={(e) => setNewSpecialRate(Number(e.target.value))} placeholder="Price" className="p-2 border border-slate-200 rounded-lg text-xs" />
+          <button type="button" onClick={handleAddSpecialService} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold">Add</button>
+        </div>
+        {isSavedNotice && <p className="text-[11px] text-emerald-700 font-bold">Pricing saved and customer display updated.</p>}
       </div>
 
       {/* 2. BUSINESS LOCATION & FACILITY SETTINGS */}
