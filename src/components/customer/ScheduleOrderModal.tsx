@@ -66,7 +66,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
 
   // Payment
   const [mpesaConfirmationCode, setMpesaConfirmationCode] = useState('');
-  const [generalKg, setGeneralKg] = useState(5);
+  const [generalKg, setGeneralKg] = useState<number | ''>('');
   const [ironingRequested, setIroningRequested] = useState(false);
   const [specialItems, setSpecialItems] = useState<Record<string, number>>({});
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
@@ -76,12 +76,13 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
 
   // Price calculations in KES
   const liveBusinessSettings = store.getBusinessSettings();
-  const subtotal = calculateLaundryPrice({ generalKg, ironing: ironingRequested, specialItems, settings: liveBusinessSettings });
+  const generalKgValue = generalKg === '' ? 0 : generalKg;
+  const subtotal = calculateLaundryPrice({ generalKg: generalKgValue, ironing: ironingRequested, specialItems, settings: liveBusinessSettings });
   const deliveryFee = liveBusinessSettings.deliveryFee;
   const totalAmount = Math.round(subtotal + deliveryFee);
 
   const handleSubmitOrder = async () => {
-    if (generalKg <= 0 && Object.values(specialItems).every((quantity) => Number(quantity) <= 0)) return;
+    if (generalKgValue <= 0 && Object.values(specialItems).every((quantity) => Number(quantity) <= 0)) return;
 
     setSubmitError('');
     try {
@@ -94,7 +95,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
         items: [{ item_type: 'Laundry pricing request', quantity: 1, care_notes: 'Final sorting and pricing at facility', price: 0 } as OrderItem],
         detergent_choice: detergentChoice,
         payment_method: 'mpesa',
-        estimated_general_kg: generalKg,
+        estimated_general_kg: generalKgValue,
         ironing_requested: ironingRequested,
         special_item_quantities: specialItems,
       });
@@ -169,7 +170,15 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-3">
                 <div>
                   <label className="text-xs font-bold text-blue-950">Estimated general laundry weight (kg)</label>
-                  <input type="number" min="0" step="0.1" value={generalKg} onChange={(e) => setGeneralKg(Math.max(0, Number(e.target.value)))} className="mt-1 w-full p-2.5 bg-white border border-blue-200 rounded-xl text-xs font-bold" />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={generalKg}
+                    onChange={(e) => setGeneralKg(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
+                    placeholder="0"
+                    className="mt-1 w-full p-2.5 bg-white border border-blue-200 rounded-xl text-xs font-bold"
+                  />
                   <p className="text-[10px] text-blue-700 mt-1">Below 5 kg, general laundry is charged at the KSh 500 minimum.</p>
                 </div>
                 <label className="flex items-center gap-2 text-xs font-bold text-blue-950">
@@ -360,7 +369,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
                 <h4 className="font-bold text-slate-900">Estimated Order Summary</h4>
                 <div className="flex justify-between text-slate-600">
                   <span>General laundry estimate</span>
-                  <span className="font-medium">{generalKg} kg {ironingRequested ? '(with ironing)' : ''}</span>
+                  <span className="font-medium">{generalKgValue} kg {ironingRequested ? '(with ironing)' : ''}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Special items</span>
@@ -451,7 +460,7 @@ export const ScheduleOrderModal: React.FC<ScheduleOrderModalProps> = ({
             {step === 'items' && (
               <button
                 type="button"
-                disabled={generalKg <= 0 && Object.values(specialItems).every((quantity) => Number(quantity) <= 0)}
+                disabled={generalKgValue <= 0 && Object.values(specialItems).every((quantity) => Number(quantity) <= 0)}
                 onClick={() => setStep('schedule')}
                 className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20"
               >
