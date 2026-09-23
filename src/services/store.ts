@@ -297,7 +297,7 @@ class StoreService {
     const ordersQuery =
       role === 'admin'
         ? collection(db, 'orders')
-        : role === 'driver'
+        : role === 'driver' || role === 'attendant'
         ? query(collection(db, 'orders'), where('driver_id', '==', uid))
         : query(collection(db, 'orders'), where('customer_id', '==', uid));
 
