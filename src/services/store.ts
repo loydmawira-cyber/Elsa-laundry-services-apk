@@ -313,7 +313,7 @@ class StoreService {
     }, onError));
 
     // Inventory is admin-only in the rules (no other role's UI needs it).
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'attendant') {
       attach('Inventory', (onNext, onError) => onSnapshot(collection(db, 'inventory'), (snapshot) => {
         this.inventory = snapshot.docs.map((docSnap: any) => ({
           ...docSnap.data(),
@@ -322,7 +322,7 @@ class StoreService {
         this.notify();
       }, onError));
 
-      // Full users directory is admin-only in the rules (only Admin* views use it).
+      // Admins and attendants need the staff directory for assignment controls.
       attach('Users', (onNext, onError) => onSnapshot(collection(db, 'users'), (snapshot) => {
         this.users = snapshot.docs.map((docSnap: any) => ({
           ...docSnap.data(),
