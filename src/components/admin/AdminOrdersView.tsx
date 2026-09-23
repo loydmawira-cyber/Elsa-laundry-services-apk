@@ -200,7 +200,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                         : order.status === 'scheduled'
                         ? 'bg-amber-100 text-amber-800'
                         : 'bg-purple-100 text-purple-800'
-                    }`}
+                    } ${order.status === 'scheduled' || order.status === 'ready' ? 'animate-pulse ring-2 ring-amber-300' : ''}`}
                   >
                     {order.status.replace('_', ' ')}
                   </span>
