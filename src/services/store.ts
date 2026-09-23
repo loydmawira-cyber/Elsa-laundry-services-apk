@@ -288,16 +288,15 @@ class StoreService {
       }
     };
 
-    // Orders: the security rules only allow a customer/driver to READ docs
-    // where customer_id/driver_id matches their own uid, and Firestore denies
-    // an entire `list` query unless it's narrowed to match that — so we must
-    // filter the query itself per role rather than fetching the whole collection.
+    // Customers and drivers are narrowed to their own orders. Admins and
+    // attendants use the full operational queue; attendants need to see
+    // unassigned orders when they are covering pickup or facility work.
     const role = this.currentUser?.role;
     const uid = auth.currentUser.uid;
     const ordersQuery =
-      role === 'admin'
+      role === 'admin' || role === 'attendant'
         ? collection(db, 'orders')
-        : role === 'driver' || role === 'attendant'
+        : role === 'driver'
         ? query(collection(db, 'orders'), where('driver_id', '==', uid))
         : query(collection(db, 'orders'), where('customer_id', '==', uid));
 
