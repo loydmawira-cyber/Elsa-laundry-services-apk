@@ -35,10 +35,12 @@ export const DriverRouteView: React.FC<DriverRouteViewProps> = ({
   const [selectedStopNumber, setSelectedStopNumber] = useState<number>(1);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // Filter orders assigned to this driver or active orders
-  const driverOrders = orders.filter(
-    (o) => o.driver_id === currentUser.id || !o.driver_id
-  );
+  // Attendants cover the operational queue, including orders that were
+  // initially assigned to a driver. Drivers see their own assignments and
+  // unassigned orders only.
+  const driverOrders = currentUser.role === 'attendant'
+    ? orders
+    : orders.filter((o) => o.driver_id === currentUser.id || !o.driver_id);
 
   interface StopItem {
     stopNumber: number;
