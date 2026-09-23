@@ -203,11 +203,15 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
       </div>
 
       {/* Payment confirmation status */}
-      {targetOrder.pricing_status === 'awaiting_customer_approval' && (
-        <div className="rounded-3xl p-4 border border-indigo-200 bg-indigo-50 shadow-xs space-y-3">
+      {(targetOrder.pricing_status === 'awaiting_customer_approval' || targetOrder.pricing_status === 'approved') && (
+        <div className={`rounded-3xl p-4 border shadow-xs space-y-3 ${targetOrder.pricing_status === 'approved' ? 'border-emerald-200 bg-emerald-50' : 'border-indigo-200 bg-indigo-50'}`}>
           <div>
-            <h3 className="text-xs font-extrabold text-indigo-950">Final price ready for your approval</h3>
-            <p className="text-[11px] text-indigo-800 mt-1">The laundry has been sorted. Review the actual quantities below, then approve before paying.</p>
+            <h3 className={`text-xs font-extrabold ${targetOrder.pricing_status === 'approved' ? 'text-emerald-900' : 'text-indigo-950'}`}>
+              {targetOrder.pricing_status === 'approved' ? 'Final price confirmed' : 'Final price ready for your approval'}
+            </h3>
+            <p className={`text-[11px] mt-1 ${targetOrder.pricing_status === 'approved' ? 'text-emerald-800' : 'text-indigo-800'}`}>
+              {targetOrder.pricing_status === 'approved' ? 'You approved this final sorted price. You can now submit your M-Pesa payment confirmation below.' : 'The laundry has been sorted. Review the actual quantities below, then approve before paying.'}
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-2 text-[11px] text-indigo-950">
             <span>General laundry: <strong>{targetOrder.final_general_kg || 0} kg</strong></span>
@@ -217,7 +221,13 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
           <div className="flex items-center justify-between border-t border-indigo-200 pt-2 font-extrabold text-indigo-950">
             <span>Final total</span><span>KSh {Math.round(targetOrder.total_amount).toLocaleString()}</span>
           </div>
-          <button type="button" onClick={() => store.approveFinalPrice(targetOrder.id)} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold">Approve Final Price</button>
+          {targetOrder.pricing_status === 'awaiting_customer_approval' ? (
+            <button type="button" onClick={() => store.approveFinalPrice(targetOrder.id)} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold">Approve Final Price</button>
+          ) : (
+            <div className="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" /> Final Price Confirmed
+            </div>
+          )}
         </div>
       )}
 
