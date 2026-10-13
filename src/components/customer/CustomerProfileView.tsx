@@ -15,7 +15,7 @@ import {
   Home,
 } from 'lucide-react';
 import { User, Address } from '../../types';
-import { store, DETERGENT_OPTIONS, DEFAULT_BUSINESS_SETTINGS } from '../../services/store';
+import { store, SOFTENER_OPTIONS, DEFAULT_BUSINESS_SETTINGS } from '../../services/store';
 import { PinSettings } from '../PinSecurity';
 
 interface CustomerProfileViewProps {
@@ -33,8 +33,8 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     store.getAddresses(currentUser.id)
   );
   const defaultAddress = addresses.find((address) => address.is_default) || addresses[0];
-  const [detergentChoice, setDetergentChoice] = useState(
-    currentUser.default_detergent || DETERGENT_OPTIONS[0].name
+  const [softenerChoice, setSoftenerChoice] = useState(
+    currentUser.default_softener || SOFTENER_OPTIONS[0].name
   );
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -44,9 +44,9 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   const [newStreet, setNewStreet] = useState('');
   const [newCity, setNewCity] = useState(defaultAddress?.city || '');
 
-  const handleUpdateDetergent = (name: string) => {
-    setDetergentChoice(name);
-    store.updateProfile(currentUser.id, { default_detergent: name });
+  const handleUpdateSoftener = (name: string) => {
+    setSoftenerChoice(name);
+    store.updateProfile(currentUser.id, { default_softener: name });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
   };
@@ -114,12 +114,12 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
 
       <PinSettings user={currentUser} />
 
-      {/* Default Detergent Preference */}
+      {/* Default Softener Preference */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-blue-600" />
-            <h3 className="font-bold text-xs text-slate-900">Default Detergent Preference</h3>
+            <h3 className="font-bold text-xs text-slate-900">Default Softener Preference</h3>
           </div>
           {savedSuccess && (
             <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full">
@@ -132,29 +132,29 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
         </p>
 
         <div className="space-y-2">
-          {DETERGENT_OPTIONS.map((det) => (
+          {SOFTENER_OPTIONS.map((opt) => (
             <div
-              key={det.id}
-              onClick={() => handleUpdateDetergent(det.name)}
+              key={opt.id}
+              onClick={() => handleUpdateSoftener(opt.name)}
               className={`p-3 rounded-2xl border cursor-pointer transition-all ${
-                detergentChoice === det.name
+                softenerChoice === opt.name
                   ? 'border-blue-600 bg-blue-50/70'
                   : 'border-slate-200 hover:border-slate-300'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">{det.name}</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{det.description}</p>
+                  <h4 className="text-xs font-bold text-slate-900">{opt.name}</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{opt.description}</p>
                 </div>
                 <div
                   className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
-                    detergentChoice === det.name
+                    softenerChoice === opt.name
                       ? 'border-blue-600 bg-blue-600 text-white'
                       : 'border-slate-300'
                   }`}
                 >
-                  {detergentChoice === det.name && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  {softenerChoice === opt.name && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </div>
               </div>
             </div>

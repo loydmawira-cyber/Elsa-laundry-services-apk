@@ -17,7 +17,7 @@ import {
   Camera,
 } from 'lucide-react';
 import { Order, OrderStatus } from '../../types';
-import { store, DEFAULT_BUSINESS_SETTINGS } from '../../services/store';
+import { store, DEFAULT_BUSINESS_SETTINGS, SPECIAL_ITEM_LABELS } from '../../services/store';
 
 interface TrackOrderViewProps {
   orders: Order[];
@@ -391,9 +391,50 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
         </div>
       )}
 
+      {/* Final list from the laundry, shown once sorting is done */}
+      {targetOrder.pricing_status && targetOrder.pricing_status !== 'estimated' && (() => {
+        const labels = (businessSettings as any).specialItemLabels || SPECIAL_ITEM_LABELS;
+        const sortedLines: string[] = [];
+        if ((targetOrder.final_general_kg || 0) > 0) {
+          sortedLines.push(`${targetOrder.final_general_kg} kg General laundry${targetOrder.final_ironing ? ' (with ironing)' : ''}`);
+        }
+        Object.entries(targetOrder.special_item_quantities || {}).forEach(([key, qty]) => {
+          if (Number(qty) > 0) {
+            const label = String(labels[key] || key);
+            sortedLines.push(label.endsWith('(kg)') ? `${qty} kg ${label.replace(/\s*\(kg\)$/, '')}` : `${qty} x ${label}`);
+          }
+        });
+        if (sortedLines.length === 0 && !targetOrder.sorting_notes) return null;
+        return (
+          <div className="bg-emerald-50 rounded-3xl p-4 border border-emerald-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-emerald-950">Updated list from the laundry</h3>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">After sorting</span>
+            </div>
+            <div className="space-y-1.5">
+              {sortedLines.map((line, i) => (
+                <div key={i} className="p-2.5 bg-white rounded-xl text-xs font-bold text-slate-800 border border-emerald-100">
+                  {line}
+                </div>
+              ))}
+            </div>
+            {targetOrder.sorting_notes && (
+              <p className="text-[11px] text-amber-700 italic">Care note: {targetOrder.sorting_notes}</p>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Item Details Accordion / Summary */}
       <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs space-y-3">
-        <h3 className="text-xs font-bold text-slate-900">Garments in this Order</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold text-slate-900">
+            {targetOrder.pricing_status && targetOrder.pricing_status !== 'estimated' ? 'As you listed them' : 'Garments & Care Notes'}
+          </h3>
+          <span className="text-[10px] font-bold text-slate-500">
+            {targetOrder.items.filter((it) => it.item_type !== 'Laundry pricing request').reduce((n, it) => n + it.quantity, 0)} pieces
+          </span>
+        </div>
         <div className="space-y-2">
           {targetOrder.items.map((it, idx) => (
             <div key={idx} className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between text-xs">
@@ -402,22 +443,24 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
                   {it.quantity}x {it.item_type}
                 </span>
                 {it.care_notes && (
-                  <p className="text-[11px] text-slate-500 italic mt-0.5">
-                    Note: {it.care_notes}
+                  <p className="text-[11px] text-amber-700 italic mt-0.5">
+                    Care note: {it.care_notes}
                   </p>
                 )}
               </div>
-              <span className="font-semibold text-slate-700">
-                KSh {(it.price * it.quantity).toLocaleString()}
-              </span>
+              {it.price > 0 && (
+                <span className="font-semibold text-slate-700">
+                  KSh {(it.price * it.quantity).toLocaleString()}
+                </span>
+              )}
             </div>
           ))}
         </div>
 
         <div className="pt-2 border-t border-slate-100 flex justify-between text-xs font-bold text-slate-900">
-          <span>Detergent Preference</span>
+          <span>Softener</span>
           <span className="text-blue-600 font-medium truncate max-w-[180px]">
-            {targetOrder.detergent_choice}
+            {targetOrder.softener_choice || targetOrder.detergent_choice || 'Not specified'}
           </span>
         </div>
       </div>

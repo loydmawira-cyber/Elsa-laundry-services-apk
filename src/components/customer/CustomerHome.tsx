@@ -129,7 +129,7 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
               Need clean laundry this week?
             </h3>
             <p className="text-xs text-slate-500">
-              We pick up from your doorstep, wash with your preferred detergent, and return it crisp.
+              We pick up from your doorstep, wash with or without softener, your choice, and return it crisp.
             </p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
@@ -208,7 +208,7 @@ export const CustomerHome: React.FC<CustomerHomeProps> = ({
         <div className="h-4 w-px bg-slate-200"></div>
         <div className="flex items-center gap-1.5">
           <Sparkles className="w-4 h-4 text-blue-600" />
-          <span>Eco-Friendly Detergents</span>
+          <span>Softener Your Way</span>
         </div>
       </div>
 
