@@ -210,7 +210,7 @@ export const DriverStopDetailModal: React.FC<DriverStopDetailModalProps> = ({
             </div>
 
             <div className="text-[11px] text-blue-700 bg-blue-50 p-2 rounded-xl font-medium border border-blue-100">
-              Detergent Formula: <span className="font-bold">{order.detergent_choice}</span>
+              Softener: <span className="font-bold">{order.softener_choice || order.detergent_choice || 'Not specified'}</span>
             </div>
           </div>
 
