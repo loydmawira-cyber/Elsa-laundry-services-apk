@@ -33,7 +33,7 @@ export interface User {
   email: string;
   role: UserRole;
   created_at: string;
-  default_detergent?: string;
+  default_softener?: string;
   avatar?: string;
   pin_hash?: string;
 }
@@ -75,7 +75,8 @@ export interface Order {
   mpesa_confirmation_code?: string;
   payment_submitted_at?: string;
   paid_at?: string;
-  detergent_choice: string;
+  softener_choice?: string;
+  detergent_choice?: string; // legacy orders only
   items: OrderItem[];
   subtotal: number;
   delivery_fee: number;
