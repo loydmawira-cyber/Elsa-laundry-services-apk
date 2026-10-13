@@ -34,6 +34,7 @@ export interface User {
   role: UserRole;
   created_at: string;
   default_softener?: string;
+  fcm_tokens?: string[]; // phones signed in for push notifications
   avatar?: string;
   pin_hash?: string;
 }

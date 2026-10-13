@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { User, UserRole, Order, InventoryItem, LaundryCatalogItem } from './types';
 import { store } from './services/store';
+import { registerPush } from './services/push';
 import { AndroidFrame } from './components/AndroidFrame';
 import { LoginView } from './components/LoginView';
 import { PinUnlockView } from './components/PinSecurity';
@@ -76,6 +77,30 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Register this phone for push notifications once a user is signed in
+  const pushUserId = currentUser?.id;
+  useEffect(() => {
+    if (pushUserId) void registerPush(pushUserId);
+  }, [pushUserId]);
+
+  // Tapping a push notification opens the related order
+  const pushRole = currentUser?.role;
+  useEffect(() => {
+    const onOpenOrder = (e: Event) => {
+      const orderId = (e as CustomEvent<{ orderId?: string }>).detail?.orderId;
+      if (!orderId) return;
+      if (pushRole === 'customer') {
+        setTrackOrderId(orderId);
+        setCustomerTab('track');
+      } else if (pushRole === 'admin') {
+        setAdminSelectedOrderId(orderId);
+        setAdminTab('orders');
+      }
+    };
+    window.addEventListener('elsa:open-order', onOpenOrder);
+    return () => window.removeEventListener('elsa:open-order', onOpenOrder);
+  }, [pushRole]);
 
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
