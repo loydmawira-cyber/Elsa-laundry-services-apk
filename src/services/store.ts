@@ -76,11 +76,9 @@ export const CATALOG_ITEMS: LaundryCatalogItem[] = [
   { id: 'item-8', name: 'Duvet / Heavy Comforter', category: 'Bedding', unit_price: 1500, unit_label: 'each', icon: 'Feather', popular: true },
 ];
 
-export const DETERGENT_OPTIONS = [
-  { id: 'eco', name: 'Hypoallergenic Gentle Wash (Fragrance Free)', description: 'Plant-based, 0% harsh dyes. Ideal for sensitive skin.' },
-  { id: 'lavender', name: 'Fresh Spring Lavender & Tropical Bloom', description: 'Infused with soothing floral oils and botanical scent.' },
-  { id: 'oxi', name: 'Oxi-Action Deep Stain Lifter', description: 'Active enzymatic clean for sportswear, collar grime, and mud.' },
-  { id: 'free_clear', name: 'Gentle Silk & Wool Softening Conditioner', description: 'PH-neutral formula preserving delicate fabrics & knitwear.' },
+export const SOFTENER_OPTIONS = [
+  { id: 'with', name: 'With Softener', description: 'Fabrics rinsed with fabric softener for extra softness and a fresh scent.' },
+  { id: 'without', name: 'Without Softener', description: 'No softener used. Best for sensitive skin, towels, and sportswear.' },
 ];
 
 export const DEFAULT_BUSINESS_SETTINGS = {
@@ -215,7 +213,7 @@ class StoreService {
               phone: data.phone || '+254 700 000 000',
               role: (data.role as UserRole) || 'customer',
               created_at: data.created_at || new Date().toISOString(),
-              default_detergent: data.default_detergent || 'Hypoallergenic Gentle Wash (Fragrance Free)',
+              default_softener: data.default_softener || 'With Softener',
               avatar: data.avatar,
               pin_hash: data.pin_hash,
             };
@@ -228,7 +226,7 @@ class StoreService {
               phone: '+254 700 000 000',
               role: 'customer',
               created_at: new Date().toISOString(),
-              default_detergent: 'Hypoallergenic Gentle Wash (Fragrance Free)',
+              default_softener: 'With Softener',
             };
             await setDoc(userDocRef, defaultUserDoc);
             this.currentUser = defaultUserDoc;
@@ -486,7 +484,7 @@ class StoreService {
     email: string;
     password: string;
     role?: UserRole;
-    default_detergent?: string;
+    default_softener?: string;
   }): Promise<User> {
     if (!params.password || params.password.length < 6) {
       throw new Error('Password must be at least 6 characters.');
@@ -509,7 +507,7 @@ class StoreService {
         email: email,
         role: 'customer',
         created_at: new Date().toISOString(),
-        default_detergent: params.default_detergent || 'Hypoallergenic Gentle Wash (Fragrance Free)',
+        default_softener: params.default_softener || 'With Softener',
       };
 
       await setDoc(doc(db, 'users', uid), newUserDoc);
@@ -566,7 +564,7 @@ class StoreService {
           email: data.email || cred.user.email || email,
           role: (data.role as UserRole) || 'customer',
           created_at: data.created_at || new Date().toISOString(),
-          default_detergent: data.default_detergent || 'Hypoallergenic Gentle Wash (Fragrance Free)',
+          default_softener: data.default_softener || 'With Softener',
           avatar: data.avatar,
           pin_hash: data.pin_hash,
         };
@@ -579,7 +577,7 @@ class StoreService {
           email: cred.user.email || email,
           role: 'customer',
           created_at: new Date().toISOString(),
-          default_detergent: 'Hypoallergenic Gentle Wash (Fragrance Free)',
+          default_softener: 'With Softener',
         };
         await setDoc(userDocRef, resolvedUser);
       }
@@ -641,7 +639,7 @@ class StoreService {
               email: cleanEmail,
               role,
               created_at: new Date().toISOString(),
-              default_detergent: 'Hypoallergenic Gentle Wash (Fragrance Free)',
+              default_softener: 'With Softener',
             };
 
             await setDoc(doc(db, 'users', uid), demoUserDoc);
@@ -934,7 +932,7 @@ class StoreService {
     pickup_window: string;
     dropoff_window: string;
     items: OrderItem[];
-    detergent_choice: string;
+    softener_choice: string;
     payment_method?: PaymentMethod;
     mpesa_confirmation_code?: string;
     estimated_general_kg?: number;
@@ -971,7 +969,7 @@ class StoreService {
       payment_status: 'pending',
       payment_method: params.payment_method || 'mpesa',
       mpesa_confirmation_code: params.mpesa_confirmation_code || undefined,
-      detergent_choice: params.detergent_choice,
+      softener_choice: params.softener_choice,
       items: params.items.map((it, idx) => ({ ...it, id: `oi-${orderId}-${idx + 1}`, order_id: orderId })),
       subtotal: pricedSubtotal,
       delivery_fee,
