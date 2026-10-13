@@ -26,6 +26,7 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { auth, db, getStaffCreationAuth } from './firebase';
+import { unregisterPush, sendPush } from './push';
 import {
   User,
   UserRole,
@@ -795,6 +796,11 @@ class StoreService {
 
   public async logout(): Promise<void> {
     try {
+      if (this.currentUser) await unregisterPush(this.currentUser.id);
+    } catch (err) {
+      console.warn('Push unregister notice:', err);
+    }
+    try {
       await firebaseSignOut(auth);
     } catch (err) {
       console.warn('Firebase signOut notice:', err);
@@ -1138,6 +1144,12 @@ class StoreService {
     } catch (err) {
       console.warn('approveFinalPrice Firestore error:', err);
     }
+    this.addNotification({
+      title: `Price approved for #${orderId}`,
+      body: `${order.customer_name} approved the final price of ${formatKES(order.total_amount)}.`,
+      order_id: orderId,
+      target_role: 'admin',
+    });
   }
 
   public async submitPaymentCode(orderId: string, code: string) {
@@ -1156,6 +1168,12 @@ class StoreService {
     } catch (err) {
       console.warn('submitPaymentCode Firestore error:', err);
     }
+    this.addNotification({
+      title: `Payment code received for #${orderId}`,
+      body: `${this.orders[index].customer_name} sent M-Pesa code ${updated.mpesa_confirmation_code}. Please confirm payment.`,
+      order_id: orderId,
+      target_role: 'admin',
+    });
   }
 
   public async updateOrderStatus(
@@ -1342,6 +1360,7 @@ class StoreService {
     this.notifications = [newNotif, ...this.notifications];
     try {
       await setDoc(doc(db, 'notifications', id), newNotif);
+      void sendPush(id);
     } catch (err) {
       console.warn('addNotification Firestore error:', err);
     }
