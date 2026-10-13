@@ -486,9 +486,11 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({
                           </p>
                         )}
                       </div>
-                      <span className="font-semibold text-slate-700">
+                      {it.price > 0 && (
+                        <span className="font-semibold text-slate-700">
                         KSh {(it.price * it.quantity).toLocaleString()}
                       </span>
+                      )}
                     </div>
                   ))}
                 </div>
