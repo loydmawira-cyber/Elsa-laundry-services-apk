@@ -10,7 +10,7 @@
         "phone": { "type": "string" },
         "role": { "type": "string", "enum": ["customer", "driver", "admin"] },
         "created_at": { "type": "string" },
-        "default_detergent": { "type": "string" },
+        "default_softener": { "type": "string" },
         "avatar": { "type": "string" }
       },
       "required": ["name", "email", "role", "created_at"]
@@ -47,7 +47,7 @@
         "status": { "type": "string" },
         "payment_status": { "type": "string" },
         "payment_method": { "type": "string" },
-        "detergent_choice": { "type": "string" },
+        "softener_choice": { "type": "string" },
         "items": { "type": "array" },
         "subtotal": { "type": "number" },
         "delivery_fee": { "type": "number" },
