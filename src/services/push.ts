@@ -75,11 +75,11 @@ export async function unregisterPush(userId: string): Promise<void> {
 }
 
 // After you deploy the Cloudflare worker (see worker/), paste its address here.
-const PUSH_WORKER_URL = 'https://elsa-push.YOUR-SUBDOMAIN.workers.dev';
+const PUSH_WORKER_URL = 'https://elsa-push.loydmawira.workers.dev';
 
 /** Ask the push worker to send the phone notification for a saved notification. */
 export async function sendPush(notificationId: string): Promise<void> {
-  if (PUSH_WORKER_URL.includes('YOUR-SUBDOMAIN')) return;
+  if (!PUSH_WORKER_URL) return;
   try {
     const user = auth.currentUser;
     if (!user) return;
